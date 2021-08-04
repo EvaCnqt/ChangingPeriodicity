@@ -41,7 +41,7 @@ load.librairies()
 ## 1.3. Loading and preparing data ----
 # --------------------------------
 
-data.marmots = read.csv("../RData/marmot_data_colonies_subset.csv")
+data.marmots = read.csv("MarmotsData.csv")
 head(data.marmots)
 
 
