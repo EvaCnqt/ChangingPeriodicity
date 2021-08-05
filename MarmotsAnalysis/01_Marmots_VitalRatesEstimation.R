@@ -49,7 +49,6 @@ head(data.marmots)
 
 data.marmots$year = factor(data.marmots$year)
 data.marmots$season = factor(data.marmots$season)
-data.marmots$location = factor(data.marmots$location)
 
 
 
@@ -87,7 +86,7 @@ survJ = surv.J1
 
 # Plotting the observed data vs the predictions of the model
 
-survJ.obs = aggregate(surv ~ year, data = data.marmots[data.marmots$stage == "J", ], FUN = mean)
+survJ.obs = aggregate(surv ~ year, data = data.marmots[data.marmots$stage_surv == "J", ], FUN = mean)
 
 survJ.pred = data.frame(levels(data.marmots$year), predict(survJ, newdata = expand.grid(year = levels(data.marmots$year)), type = "response"))
 colnames(survJ.pred) = c("year", "pred")
