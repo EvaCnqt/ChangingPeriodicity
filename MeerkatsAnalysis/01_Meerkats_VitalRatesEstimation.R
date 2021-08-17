@@ -36,6 +36,7 @@ load.librairies = function(){
   library(optimx)
   library(multcomp)
   library(MuMIn)
+  library(ggpubr)
 }
 
 load.librairies()
@@ -174,13 +175,13 @@ plot.survJ = ggplot(survJ.new.data, aes(x = density, y = pred, group = season, c
                       labels = c("Rain", "Dry"),
                       values = c(cbbPalette[2], cbbPalette[1])) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -293,13 +294,13 @@ plot.survS = ggplot(survS.new.data, aes(x = density, y = pred)) +
   ylab("Survival probability") +
   ggtitle("Juvenile survival") +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -414,13 +415,13 @@ plot.survH = ggplot(survH.new.data, aes(x = season, y = pred)) +
   #ggtitle("Helper survival") +
   scale_x_discrete(labels = c("Dry", "Rain")) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -542,13 +543,13 @@ plot.survD = ggplot(survD.new.data, aes(x = as.numeric(year), y = pred, group = 
                       labels = c("Rain", "Dry"),
                       values = c(cbbPalette[2], cbbPalette[1])) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -670,13 +671,13 @@ plot.emig = ggplot(emig.new.data, aes(x = density, y = pred)) +
   ylab("Emigration probability") +
   ggtitle("Helper emigration") +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -777,13 +778,13 @@ plot.transition = ggplot(transition.new.data, aes(x = density, y = pred)) +
   ylab("Transition probability") +
   ggtitle("Helper-Dominant transition") +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -914,13 +915,13 @@ plot.recruitment.H = ggplot(recruitment.H.new.data, aes(x = density, y = pred)) 
   ylab("Number of pups") +
   ggtitle("Helper recruitment") +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 40, colour = "black", margin = margin(t = 10, r = 0, b = 0, l =0 )), 
         axis.text.y = element_text(size = 40, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0), face = "bold"), 
+        plot.title = element_text(size = 50, hjust = 0.5, margin = margin(t = 0, r = 0, b = 15, l = 0)), 
         legend.text = element_text(size = 40), 
-        legend.title = element_text(face = "bold", size = 40), 
+        legend.title = element_text(size = 40), 
         legend.position = "right", 
         legend.key.size = unit(6, "lines"))
 
@@ -978,12 +979,13 @@ recruitment.D.2 = glmer(pups ~ season + density + I(density^2) + season:density 
 
 overdisp_fun(recruitment.D)
 
-recruitmentD.quasiP = MASS::glmmPQL(pups ~ season + density + I(density^2) + season:density + season:I(density^2), random =  ~ 1+season|year, family = poisson, data = dominants, control = glmerControl(optimizer = "bobyqa", calc.derivs = F))
+recruitmentD.quasiP = MASS::glmmPQL(pups ~ season + density + I(density^2) + season:density + season:I(density^2), random =  ~ 1+season|year, family = poisson, data = dominants)
 
 summary(recruitmentD.quasiP)
 
 recruitment.D = recruitmentD.quasiP
-
+recruitment.D8 = MASS::glmmPQL(pups ~ season + density + season:density, random =  ~ 1+season|year, family = poisson, data = dominants, control = lmeControl(opt = "optim"))
+recruitment.D10 = MASS::glmmPQL(pups ~ season + density + I(density^2) + season:density, random =  ~ 1+season|year, family = poisson, data = dominants, control = lmeControl(opt = "optim"))
 
 # Plotting the observed data vs the predictions of the model
 
@@ -994,7 +996,7 @@ recruitment.D.obs.dry = aggregate(pups ~ year + density, data = data.meerkats[da
   # Rain
 
 recruitment.D.pred.rain = data.frame(density = seq(min(recruitment.D.obs.rain$density), 20, length.out = length(recruitment.D.obs.rain$density)),
-                                     pred = predict(recruitment.D, newdata = data.frame(density = seq(min(recruitment.D.obs.rain$density), 20, length.out = length(recruitment.D.obs.rain$density)), season = "rain"), type = "response", re.form = NA))
+                                     pred = predict(recruitment.D, newdata = expand.grid(density = seq(min(recruitment.D.obs.rain$density), 20, length.out = length(recruitment.D.obs.rain$density)), season = unique(data.meerkats$season)), type = "response", re.form = NA, level = 0)[1:19])
 
 recruitment.D.pred.rain2 = data.frame(density = seq(min(recruitment.D.obs.rain$density), 20, length.out = length(recruitment.D.obs.rain$density)),
                                       pred = predict(recruitment.D.2, newdata = data.frame(density = seq(min(recruitment.D.obs.rain$density), 20, length.out = length(recruitment.D.obs.rain$density)), season = "rain"), type = "response", re.form = NA))
@@ -1027,7 +1029,7 @@ layout(1)
   # Dry
 
 recruitment.D.pred.dry = data.frame(density = seq(min(recruitment.D.obs.dry$density), 20, length.out = length(recruitment.D.obs.dry$density)),
-                                    pred = predict(recruitment.D, newdata = data.frame(density = seq(min(recruitment.D.obs.dry$density), 20, length.out = length(recruitment.D.obs.dry$density)), season = "dry"), type = "response", re.form = NA))
+                                    pred = predict(recruitment.D, newdata = expand.grid(density = seq(min(recruitment.D.obs.dry$density), 20, length.out = length(recruitment.D.obs.dry$density)), season = unique(data.meerkats$season)), type = "response", re.form = NA, level = 0)[20:38])
 
 recruitment.D.pred.dry2 = data.frame(density = seq(min(recruitment.D.obs.dry$density), 20, length.out = length(recruitment.D.obs.dry$density)),
                                      pred = predict(recruitment.D8, newdata = data.frame(density = seq(min(recruitment.D.obs.dry$density), 20, length.out = length(recruitment.D.obs.dry$density)), season = "dry"), type = "response", re.form = NA))
@@ -1062,27 +1064,88 @@ layout(1)
 # Best models (recruitment.D8)
 
 # Computing the predictions of the model and the 95 % CI
-recruitment.D8.new.data = expand.grid(year = levels(data.meerkats$year),
-                                      season = levels(data.meerkats$season),
+recruitment.D8.new.data = expand.grid(year = unique(data.meerkats$year),
+                                      season = unique(data.meerkats$season),
                                       density = seq(min(data.meerkats$density),15,length.out = 100))
+recruitment.D8.new.data$lwr = NA
+recruitment.D8.new.data$upr = NA
+recruitment.D8.new.data$pred = NA
 
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
-# 95% confidence intervals
+easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
+  # Marc Girondot - 2016-01-09
+  if (is.null(newdata)) {
+    if (any(class(model)=="glmerMod")) newdata <- model@frame
+    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
+    if (any(class(model)=="glmmadmb")) newdata <- model$frame
+  }
+  
+  ## baseline prediction, on the linear predictor scale:
+  pred0 <- predict(model, re.form=NA, newdata=newdata)
+  ## fixed-effects model matrix for new data
+  if (any(class(model)=="glmmadmb")) {
+    X <- model.matrix(delete.response(model$terms), newdata)
+  } else {
+    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
+                      newdata)
+  }
+  
+  if (any(class(model)=="glm")) {
+    # Marc Girondot - 2016-01-09
+    # Note that beta is not used
+    beta <- model$coefficients
+  } else {
+    beta <- fixef(model) ## fixed-effects coefficients
+  }
+  
+  V <- vcov(model)     ## variance-covariance matrix of beta
+  
+  # Marc Girondot - 2016-01-09
+  if (any(!(colnames(V) %in% colnames(X)))) {
+    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
+    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
+    X <- cbind(X, dfi)
+  }
+  
+  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
+  
+  ## inverse-link function
+  # Marc Girondot - 2016-01-09
+  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
+  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
+  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
+  
+  ## construct 95% Normal CIs on the link scale and
+  ##  transform back to the response (probability) scale:
+  crit <- -qnorm(alpha/2)
+  linkinv(cbind(lwr=pred0-crit*pred.se,
+                upr=pred0+crit*pred.se))
+}
 
-bootstrap.recruitment.D8 <- bootMer(recruitment.D8, FUN = function(x) predict(x, recruitment.D8.new.data, re.form = NA),
-                                    nsim = 1000)
-recruitment.D8.new.data$lwr = exp(apply(bootstrap.recruitment.D8$t, 2, quantile, 0.025, na.rm = T))
-recruitment.D8.new.data$upr = exp(apply(bootstrap.recruitment.D8$t, 2, quantile ,0.975, na.rm = T))
-recruitment.D8.new.data$pred = predict(recruitment.D8, newdata = recruitment.D8.new.data, type = "response", re.form = NA)
+recruitment.D8.new.data$lwr[which(recruitment.D8.new.data$season == "rain")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 1])
+recruitment.D8.new.data$lwr[which(recruitment.D8.new.data$season == "dry")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 1])
 
-plot.recruitment.D8 = ggplot(recruitment.D8.new.data, aes(x = density, y = pred, group = season, colour = season)) + 
+recruitment.D8.new.data$upr[which(recruitment.D8.new.data$season == "rain")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 2])
+recruitment.D8.new.data$upr[which(recruitment.D8.new.data$season == "dry")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 2])
+
+recruitment.D8.new.data$pred[which(recruitment.D8.new.data$season == "rain")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "rain"), ], 1, FUN = function(x) predict(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[1])
+recruitment.D8.new.data$pred[which(recruitment.D8.new.data$season == "dry")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "dry"), ], 1, FUN = function(x) predict(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[2])
+
+recruitment.D8.RE.avg = data.frame(season = aggregate(pred ~ season + density, data = recruitment.D8.new.data, mean)$season,
+                                   density = aggregate(pred ~ season + density, data = recruitment.D8.new.data, mean)$density,
+                                   pred = aggregate(pred ~ season + density, data = recruitment.D8.new.data, mean)$pred,
+                                   lwr = aggregate(lwr ~ season + density, data = recruitment.D8.new.data, mean)$lwr,
+                                   upr = aggregate(upr ~ season + density, data = recruitment.D8.new.data, mean)$upr)
+
+plot.recruitment.D8 = ggplot(recruitment.D8.RE.avg, aes(x = density, y = pred, group = season, colour = season)) + 
   #facet_wrap(~year)+
-  geom_line(size = 3) +
+  geom_line(size = 1.5) +
   geom_ribbon(aes(ymin = lwr, ymax = upr, fill = season), linetype = 0, alpha = 0.2) +
   xlab("") +
   ylab("Number of pups") +
   ggtitle("") +
-  ylim(0, 10) +
+  ylim(0, 20) +
   scale_fill_manual(name = "Season",
                     breaks = c("rain", "dry"),
                     labels = c("Wet", "Dry"),
@@ -1092,42 +1155,52 @@ plot.recruitment.D8 = ggplot(recruitment.D8.new.data, aes(x = density, y = pred,
                       labels = c("Wet", "Dry"),
                       values = c(cbbPalette[1], cbbPalette[2])) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l =0 )), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l =0 )), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 9), 
         legend.position = "none", 
-        legend.key.height = unit(4, "lines"), 
-        legend.key.width = unit(5, "lines"))
+        legend.key.height = unit(2, "lines"), 
+        legend.key.width = unit(2, "lines"))
 
 
 # Second best model (recruitment.D10)
 
 # Computing the predictions of the model and the 95 % CI
+recruitment.D10.new.data = expand.grid(year = unique(data.meerkats$year),
+                                      season = unique(data.meerkats$season),
+                                      density = seq(min(data.meerkats$density),15,length.out = 100))
+recruitment.D10.new.data$lwr = NA
+recruitment.D10.new.data$upr = NA
+recruitment.D10.new.data$pred = NA
 
-recruitment.D10.new.data = expand.grid(year = levels(data.meerkats$year),
-                                       season = levels(data.meerkats$season),
-                                       density = seq(min(data.meerkats$density), 15, length.out = 100))
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
+recruitment.D10.new.data$lwr[which(recruitment.D10.new.data$season == "rain")] = apply(recruitment.D10.new.data[which(recruitment.D10.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D10, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 1])
+recruitment.D10.new.data$lwr[which(recruitment.D10.new.data$season == "dry")] = apply(recruitment.D10.new.data[which(recruitment.D10.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D10, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 1])
 
-# 95% confidence intervals
+recruitment.D10.new.data$upr[which(recruitment.D10.new.data$season == "rain")] = apply(recruitment.D10.new.data[which(recruitment.D10.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D10, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 2])
+recruitment.D10.new.data$upr[which(recruitment.D10.new.data$season == "dry")] = apply(recruitment.D10.new.data[which(recruitment.D10.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D10, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 2])
 
-bootstrap.recruitment.D10 <- bootMer(recruitment.D.2, FUN = function(x) predict(x, recruitment.D10.new.data, re.form = NA), 
-                                     nsim = 1000)
-recruitment.D10.new.data$lwr = exp(apply(bootstrap.recruitment.D10$t, 2, quantile, 0.025, na.rm = T))
-recruitment.D10.new.data$upr = exp(apply(bootstrap.recruitment.D10$t, 2, quantile, 0.975, na.rm = T))
-recruitment.D10.new.data$pred = predict(recruitment.D.2, newdata = recruitment.D10.new.data, type = "response", re.form = NA)
+recruitment.D10.new.data$pred[which(recruitment.D10.new.data$season == "rain")] = apply(recruitment.D10.new.data[which(recruitment.D10.new.data$season == "rain"), ], 1, FUN = function(x) predict(recruitment.D10, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[1])
+recruitment.D10.new.data$pred[which(recruitment.D10.new.data$season == "dry")] = apply(recruitment.D10.new.data[which(recruitment.D10.new.data$season == "dry"), ], 1, FUN = function(x) predict(recruitment.D10, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[2])
 
-plot.recruitment.D10 = ggplot(recruitment.D10.new.data, aes(x = density, y = pred, group = season, colour = season)) + 
+recruitment.D10.RE.avg = data.frame(season = aggregate(pred ~ season + density, data = recruitment.D10.new.data, mean)$season,
+                                   density = aggregate(pred ~ season + density, data = recruitment.D10.new.data, mean)$density,
+                                   pred = aggregate(pred ~ season + density, data = recruitment.D10.new.data, mean)$pred,
+                                   lwr = aggregate(lwr ~ season + density, data = recruitment.D10.new.data, mean)$lwr,
+                                   upr = aggregate(upr ~ season + density, data = recruitment.D10.new.data, mean)$upr)
+
+plot.recruitment.D10 = ggplot(recruitment.D10.RE.avg, aes(x = density, y = pred, group = season, colour = season)) + 
   #facet_wrap(~year)+
-  geom_line(size = 3) +
+  geom_line(size = 1.5) +
   geom_ribbon(aes(ymin = lwr, ymax = upr, fill = season), linetype = 0, alpha = 0.2) +
-  xlab(expression(bold("Pop. density (indiv./"*km^2*")"))) +
+  xlab(expression("Pop. density (indiv./"*km^2*")")) +
   ylab("") +
   ggtitle("") +
-  ylim(0, 10) +
+  ylim(0, 20) +
   scale_fill_manual(name = "Season",
                     breaks = c("rain", "dry"),
                     labels = c("Wet", "Dry"),
@@ -1137,43 +1210,52 @@ plot.recruitment.D10 = ggplot(recruitment.D10.new.data, aes(x = density, y = pre
                       labels = c("Wet", "Dry"),
                       values = c(cbbPalette[1], cbbPalette[2])) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l =0 )), 
-        axis.text.y = element_blank(), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l =0 )), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 9), 
         legend.position = "none", 
-        legend.key.height = unit(4, "lines"), 
-        legend.key.width = unit(5, "lines"))
+        legend.key.height = unit(2, "lines"), 
+        legend.key.width = unit(2, "lines"))
 
 
 # Most biologically relevant model
 
 # Computing the predictions of the model and the 95 % CI
+recruitment.D.new.data = expand.grid(year = unique(data.meerkats$year),
+                                       season = unique(data.meerkats$season),
+                                       density = seq(min(data.meerkats$density),15,length.out = 100))
+recruitment.D.new.data$lwr = NA
+recruitment.D.new.data$upr = NA
+recruitment.D.new.data$pred = NA
 
-recruitment.D.new.data = expand.grid(year = levels(data.meerkats$year),
-                                     season = levels(data.meerkats$season),
-                                     density = seq(min(data.meerkats$density), 15, length.out = 1000))
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
+recruitment.D.new.data$lwr[which(recruitment.D.new.data$season == "rain")] = apply(recruitment.D.new.data[which(recruitment.D.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 1])
+recruitment.D.new.data$lwr[which(recruitment.D.new.data$season == "dry")] = apply(recruitment.D.new.data[which(recruitment.D.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 1])
 
-# 95% confidence intervals
+recruitment.D.new.data$upr[which(recruitment.D.new.data$season == "rain")] = apply(recruitment.D.new.data[which(recruitment.D.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 2])
+recruitment.D.new.data$upr[which(recruitment.D.new.data$season == "dry")] = apply(recruitment.D.new.data[which(recruitment.D.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 2])
 
-bootstrap.recruitment.D <- bootMer(recruitment.D, FUN = function(x) predict(x, recruitment.D.new.data, re.form = NA),
-                                   nsim = 1000)
-recruitment.D.new.data$lwr = exp(apply(bootstrap.recruitment.D$t, 2, quantile, 0.025, na.rm = T))
-recruitment.D.new.data$upr = exp(apply(bootstrap.recruitment.D$t, 2, quantile, 0.975, na.rm = T))
-recruitment.D.new.data$pred = predict(recruitment.D, newdata = recruitment.D.new.data, type = "response", re.form = NA)
+recruitment.D.new.data$pred[which(recruitment.D.new.data$season == "rain")] = apply(recruitment.D.new.data[which(recruitment.D.new.data$season == "rain"), ], 1, FUN = function(x) predict(recruitment.D, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[1])
+recruitment.D.new.data$pred[which(recruitment.D.new.data$season == "dry")] = apply(recruitment.D.new.data[which(recruitment.D.new.data$season == "dry"), ], 1, FUN = function(x) predict(recruitment.D, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[2])
 
+recruitment.D.RE.avg = data.frame(season = aggregate(pred ~ season + density, data = recruitment.D.new.data, mean)$season,
+                                    density = aggregate(pred ~ season + density, data = recruitment.D.new.data, mean)$density,
+                                    pred = aggregate(pred ~ season + density, data = recruitment.D.new.data, mean)$pred,
+                                    lwr = aggregate(lwr ~ season + density, data = recruitment.D.new.data, mean)$lwr,
+                                    upr = aggregate(upr ~ season + density, data = recruitment.D.new.data, mean)$upr)
 
-plot.recruitment.D.FigS4 = ggplot(recruitment.D.new.data, aes(x = density, y = pred, group = season, colour = season)) + 
+plot.recruitment.D.FigS4 = ggplot(recruitment.D.RE.avg, aes(x = density, y = pred, group = season, colour = season)) + 
   #facet_wrap(~year)+
-  geom_line(size = 3) +
+  geom_line(size = 1.5) +
   geom_ribbon(aes(ymin = lwr, ymax = upr, fill = season), linetype = 0, alpha = 0.2) +
   xlab("") +
   ylab("") +
   ggtitle("") +
-  ylim(0, 10) +
+  ylim(0, 20) +
   scale_fill_manual(name = "Season",
                     breaks = c("rain", "dry"),
                     labels = c("Wet", "Dry"),
@@ -1183,15 +1265,15 @@ plot.recruitment.D.FigS4 = ggplot(recruitment.D.new.data, aes(x = density, y = p
                       labels = c("Wet", "Dry"),
                       values = c(cbbPalette[1], cbbPalette[2])) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
-        axis.text.y = element_blank(), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)),
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 9), 
         legend.position = "none", 
-        legend.key.height = unit(4, "lines"), 
-        legend.key.width = unit(5, "lines"))
+        legend.key.height = unit(2, "lines"), 
+        legend.key.width = unit(2, "lines"))
 
 
 # Figure S4.1 
@@ -1199,17 +1281,19 @@ plot.recruitment.D.FigS4 = ggplot(recruitment.D.new.data, aes(x = density, y = p
 meerkats.fig.S4.1 = ggarrange(plot.recruitment.D8, 
                               plot.recruitment.D10, 
                               plot.recruitment.D.FigS4, 
-                              labels = c("(A)", "(B)", "(C)"), ncol = 3, nrow = 1, 
-                              font.label = list(size = 26), hjust = -0.1, 
+                              labels = c("(a)", "(b)", "(c)"), ncol = 3, nrow = 1, 
+                              font.label = list(size = 10, face = "plain"), hjust = -0.1, 
+                              label.x = c(0.05, 0.05, 0.05),
+                              label.y = c(0.99, 0.99, 0.99),
                               common.legend = T, legend = "bottom")
 
-png(filename = "Figure_S4_1.png",
-    width = 5500,
-    height = 2000,
-    units = "px",
+tiff(filename = "Figure_S4_1.tiff",
+    width = 7,
+    height = 3,
+    units = "in",
     bg = "white",
-    res = 300,
-    type = "cairo")
+    res = 600,
+    compression = "lzw")
 
 meerkats.fig.S4.1
 

@@ -137,31 +137,32 @@ dev.off()
 
 # Var(lambda)
 
-png(filename = "VarLambda.png", 
-  width = 4500, 
-  height = 2500, 
-  units = "px", 
+tiff(filename = "VarLambda.tiff", 
+  width = 8, 
+  height = 3.5, 
+  units = "in", 
   bg = "white", 
-  res = 300, 
-  type = "cairo")
+  res = 600, 
+  compression = "lzw")
 
 plot.var.lambda = ggplot(sim.results, aes(x = vital.rate, y = var.lambda, fill = scenario)) +
  facet_wrap(~ density, labeller = labeller(density = facet_labels)) +
- geom_boxplot(ymin = agg.meerkats.var$var.lambda[, 1], ymax = agg.meerkats.var$var.lambda[, 3]) +
+ geom_boxplot(ymin = agg.meerkats.var$var.lambda[, 1], ymax = agg.meerkats.var$var.lambda[, 3], outlier.size = 0.1, size = 0.1) +
  stat_summary(fun = mean, colour = "darkred", geom = "point", 
-              shape = 17, size = 3, show.legend = TRUE, position = position_dodge(width = 0.75)) +
+              shape = 17, size = 1, show.legend = TRUE, position = position_dodge(width = 0.75)) +
  labs(title = "", x = "Perturbed vital rate", y = "Variance of annual \u03BB") +
  scale_fill_manual(values = cbbPalette, 
           name = "Scenario") +
  theme_bw() +
- theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 0, b = 0, l = 0), face = "bold"), 
-       axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 0, b = 0, l = 0), face = "bold"), 
-       axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
-       axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-       legend.text = element_text(size = 22), legend.title = element_text(face = "bold", size = 25), 
+ theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 4, r = 0, b = 0, l = 0)), 
+       axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 4, r = 0, b = 0, l = 0)), 
+       axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
+       axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+       legend.text = element_text(size = 7), 
+       legend.title = element_text(size = 9), 
        legend.position = "right", 
-       legend.key.size = unit(6, "lines"), 
-       strip.text.x = element_text(size = 20, face = "bold"))
+       legend.key.size = unit(2, "lines"), 
+       strip.text.x = element_text(size = 7))
 
 plot.var.lambda
 
