@@ -118,29 +118,39 @@ plot.stoch.lambda.fig = ggplot(sim.results, aes(x = vital.rate, y = stoch.lambda
 # -----------------
 
 plot.var.lambda.fig = ggplot(sim.results, aes(x = vital.rate, y = var.lambda, fill = scenario)) +
-  geom_boxplot(ymin = agg.marmots.var.lambda$var.lambda[, 1], ymax = agg.marmots.var.lambda$var.lambda[, 3]) +
-  stat_summary(fun = mean, colour = "darkred", geom = "point", shape = 17, size = 3, position = position_dodge(width = 0.75), show.legend = T) +
+  geom_boxplot(ymin = agg.marmots.var.lambda$var.lambda[, 1], ymax = agg.marmots.var.lambda$var.lambda[, 3], outlier.size = 0.1, size = 0.1) +
+  stat_summary(fun = mean, colour = "darkred", geom = "point", shape = 17, size = 1, position = position_dodge(width = 0.75), show.legend = T) +
   labs(x = "Perturbed vital rate", y = "Variance of annual \u03BB") +
   scale_fill_manual(values = cbbPalette,
                     name = "Scenario") +
   ylim(0, 0.07) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), angle = 20, hjust = 1), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 4, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text( size = 9), 
         legend.position = "right", 
-        legend.key.size = unit(4, "lines"))
+        legend.key.size = unit(2, "lines"))
 
+tiff(filename = "MarmotVarLambda.tiff",
+    width=5,
+    height=3,
+    units="in",
+    bg="white",
+    res=600,
+    compression = "lzw")
 
+plot.var.lambda.fig
+
+dev.off()
 
 
 ###########################################################################
 #
 # 4. Plotting the absolute changes
-# between seasons for NR survival (Figure S5.1)
+# between seasons for R survival (Figure S4.1)
 #
 ###########################################################################
 
@@ -149,25 +159,25 @@ abs.changes = data.frame(year = as.numeric(rownames(coef(survR)$year)),
 threshold.abs.changes = quantile(abs.changes$abs.change)[3]
 
 plot.abs.change = ggplot(abs.changes, aes(x = year, y = abs.change)) +
-  geom_point(size = 3) +
-  geom_abline(intercept = threshold.abs.changes, slope = 0, colour = "darkred", lwd = 2) +
-  ylab(expression(bold(Delta*"R survival (Summer-Winter)"))) +
+  geom_point(size = 1) +
+  geom_abline(intercept = threshold.abs.changes, slope = 0, colour = "darkred", lwd = 1) +
+  ylab(expression(Delta*"R survival (Summer-Winter)")) +
   xlab("Year") +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        legend.text = element_text(size = 25), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text( size = 9), 
         legend.position = "none")
 
 png(filename = "FigS5.png",
-    width=4000,
-    height=3000,
-    units="px",
+    width=5,
+    height=5,
+    units="in",
     bg="white",
-    res=300,
+    res=600,
     type = "cairo")
 
 plot.abs.change
