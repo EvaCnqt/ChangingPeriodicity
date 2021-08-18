@@ -323,29 +323,30 @@ M.elasticities.df$TSF = factor(M.elasticities.df$TSF, levels = unique(M.elastici
 #
 ###########################################################################
 
-png(filename = "DP_ElasticityToHabitatState.png",
-    width=3000,
-    height=2000,
-    units="px",
+tiff(filename = "DP_ElasticityToHabitatState.tiff",
+    width=3,
+    height=3,
+    units="in",
     bg="white",
-    res=300,
-    type="cairo")
+    res=600,
+    compression="lzw")
 
 ggplot(M.elasticities.df, aes(x = TSF, y = elast.mean)) +
-  geom_point(size = 4) +
+  geom_point(size = 2) +
   geom_errorbar(aes(ymin = elast.low, ymax = elast.up, width = 0.25)) +
   labs(x = "Time since fire (TSF)", y = "Elasticity to the post-fire habitat") +
   scale_x_discrete(labels = c(expression("TSF"["0"]), expression("TSF"["1"]), expression("TSF"["2"]), expression("TSF"["3"]), expression("TSF"[">3"]))) +
   ylim(0, 0.6) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0), angle = 0, hjust = 0.5), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 4, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0), angle = 0, hjust = 0.5), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text( size = 9), 
         legend.position = "right", 
-        legend.key.size = unit(6, "lines"),
-        strip.text.x = element_text(size = 20, face = "bold"))
+        legend.key.size = unit(2, "lines"),
+        strip.text.x = element_text(size = 10))
 
 dev.off()
+

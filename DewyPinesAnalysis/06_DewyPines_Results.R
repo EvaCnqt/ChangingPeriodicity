@@ -107,64 +107,63 @@ plot.stoch.lambda = ggplot(sim.results, aes(x = treatment, y = stoch.lambda)) +
   scale_shape_manual("", values = c("Mean variance" = 17)) +
   scale_x_discrete(labels = c("Control", expression("TSF"["0"]), expression("TSF"["1"]), expression("TSF"["2"]), expression("TSF"["3"]), expression("TSF"[">3"]~"(0.1)"), expression("TSF"[">3"]~"(0.3)"), expression("TSF"[">3"]~"(0.5)"), expression("TSF"[">3"]~"(0.7)"), expression("TSF"[">3"]~"(0.9)"), expression("TSF"[">3"]~"(all)"))) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
+  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
         axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 6, r =0 , b = 0, l = 0), angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 6, b = 0, l = 0)), 
         legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+        legend.title = element_text(size = 25), 
         legend.position = "none", 
         legend.key.height = unit(4, "lines"), 
         legend.key.width = unit(2, "lines"), 
-        strip.text.x = element_text(size = 20, face = "bold"))
+        strip.text.x = element_text(size = 20))
 
 
 ## 3.2. Combined plot (Fig. S10.3) ----
 # --------------------------------
 
 plot.legend.appendix = ggplot(agg.ext.prob, aes(x = treatment, y = ext.prob, colour = density)) +
-  geom_point(size = 6, position = position_dodge(1)) +
+  geom_point(size = 3, position = position_dodge(1)) +
   labs(x = "Perturbed state", y = "Extinction probability") +
   scale_colour_manual(values = c("#000000", "#009E73"),
                       labels = c("Average\ndensity", "Density\ndependence"),
                       name = "Scenario") +
   scale_x_discrete(labels = c("Control", expression("TSF"["0"]), expression("TSF"["1"]), expression("TSF"["2"]), expression("TSF"["3"]), expression("TSF"[">3"]~"(0.1)"), expression("TSF"[">3"]~"(0.3)"), expression("TSF"[">3"]~"(0.5)"), expression("TSF"[">3"]~"(0.7)"), expression("TSF"[">3"]~"(0.9)"), expression("TSF"[">3"]~"(all)"))) +
   ylim(0, 1) +
-  guides(color = guide_legend(override.aes = list(size = 8))) +
+  guides(color = guide_legend(override.aes = list(size = 2))) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 6, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 6, b = 0, l = 0)), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7, margin = margin(t = 2)), 
+        legend.title = element_text(size = 9), 
         legend.position = "right", 
-        legend.key.height = unit(4, "lines"), 
-        legend.key.width = unit(2, "lines"))
+        legend.key.size = unit(1, "lines"))
 
 
 plot.var.lambda.appendix = ggplot(sim.results, aes(x = treatment, y = var.lambda)) +
   facet_wrap(~ density,labeller = labeller(density = facet_labels)) +
-  geom_boxplot(ymin = agg.var.lambda$var.lambda[, 1], ymax = agg.var.lambda$var.lambda[, 3]) +
-  stat_summary(fun = mean, colour = "darkred", aes(shape = "Mean variance"), geom = "point", size = 6) +
+  geom_boxplot(ymin = agg.var.lambda$var.lambda[, 1], ymax = agg.var.lambda$var.lambda[, 3], outlier.size = 0.1, size = 0.1) +
+  stat_summary(fun = mean, colour = "darkred", aes(shape = "Mean variance"), geom = "point", size = 1) +
   labs(x = "Perturbed state", y = "Variance of annual \u03BB") +
   scale_shape_manual("", values = c("Mean variance" = 17)) +
   scale_x_discrete(labels = c("Control", expression("TSF"["0"]), expression("TSF"["1"]), expression("TSF"["2"]), expression("TSF"["3"]), expression("TSF"[">3"]~"(0.1)"), expression("TSF"[">3"]~"(0.3)"), expression("TSF"[">3"]~"(0.5)"), expression("TSF"[">3"]~"(0.7)"), expression("TSF"[">3"]~"(0.9)"), expression("TSF"[">3"]~"(all)"))) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 6, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 6, b = 0, l = 0)), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 9), 
         legend.position = "none", 
         legend.key.height = unit(4, "lines"), 
         legend.key.width = unit(2, "lines"), 
-        strip.text.x = element_text(size = 20, face = "bold"))
+        strip.text.x = element_text(size = 7, face = "plain"))
 
 
 plot.ext.prob.appendix = ggplot(agg.ext.prob, aes(x = treatment, y = ext.prob, colour = density)) +
-  geom_point(size = 6, position = position_dodge(1)) +
+  geom_point(size = 2, position = position_dodge(1)) +
   labs(x = "Perturbed state", y = "Extinction probability") +
   scale_colour_manual(values = c("#000000", "#009E73"),
                       labels = c("Average density", "Density dependence"),
@@ -173,31 +172,31 @@ plot.ext.prob.appendix = ggplot(agg.ext.prob, aes(x = treatment, y = ext.prob, c
   ylim(0, 1) +
   guides(color = guide_legend(override.aes = list(size = 8))) +
   theme_bw() +
-  theme(axis.title.x = element_text(size = 25, colour = "black", margin = margin(t = 18, r = 0, b = 0, l = 0), face = "bold"), 
-        axis.title.y = element_text(size = 25, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"), 
-        axis.text.x = element_text(size = 22, colour = "black", margin = margin(t = 6, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
-        axis.text.y = element_text(size = 22, colour = "black", margin = margin(t = 0, r = 6, b = 0, l = 0)), 
-        legend.text = element_text(size = 22), 
-        legend.title = element_text(face = "bold", size = 25), 
+  theme(axis.title.x = element_text(size = 9, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0)), 
+        axis.title.y = element_text(size = 9, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        axis.text.x = element_text(size = 7, colour = "black", margin = margin(t = 2, r = 0, b = 0, l = 0), angle = 45, hjust = 1), 
+        axis.text.y = element_text(size = 7, colour = "black", margin = margin(t = 0, r = 2, b = 0, l = 0)), 
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 9), 
         legend.position = "none", legend.key.height = unit(4, "lines"), 
         legend.key.width = unit(2, "lines"))
 
 
 dp.appendix = ggdraw() +
-  draw_plot(plot.var.lambda.appendix, x = 0, y = -0.01, width = .55, height = 1) +
-  draw_plot(plot.ext.prob.appendix, x = .55, y = -0.01, width = .33, height = 1) +
-  draw_plot(get_legend(plot.legend.appendix), x = 0.663, y = -0.01, width = .55, height = 1.2) +
-  draw_plot_label(label = c("(a)", "(b)"), size = 26,
+  draw_plot(plot.var.lambda.appendix, x = 0, y = 0.2, width = .55, height = 0.8) +
+  draw_plot(plot.ext.prob.appendix, x = .55, y = 0.2, width = .33, height = 0.8) +
+  draw_plot(get_legend(plot.legend.appendix), x = 0.663, y = 0.5, width = .55, height = 0.6) +
+  draw_plot_label(label = c("(a)", "(b)"), size = 10, fontface = "plain",
                   x = c(0, 0.537), y = c(1, 1))
 
 
-png(filename = "DPAppendix10.png",
-    width=6000,
-    height=2000,
-    units="px",
+tiff(filename = "DPAppendix10.tiff",
+    width=7,
+    height=3,
+    units="in",
     bg="white",
-    res=300,
-    type = "cairo")
+    res=600,
+    compression = "lzw")
 
 dp.appendix
 

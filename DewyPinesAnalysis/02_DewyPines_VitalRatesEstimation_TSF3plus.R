@@ -431,7 +431,7 @@ survSD.HG.new.data = expand.grid(density = seq(10, 15))
 
 # 95% confidence intervals
 bootstrap.survSD.HG <- bootMer(survSD.HG, FUN = function(x) predict(x, survSD.HG.new.data, re.form = NA), 
-  nsim = 100)
+  nsim = 100) # Bootstraps fail
 survSD.HG.new.data$lwr = inv.logit(apply(bootstrap.survSD.HG$t, 2, quantile, 0.025, na.rm = T))
 survSD.HG.new.data$upr = inv.logit(apply(bootstrap.survSD.HG$t, 2, quantile, 0.975, na.rm = T))
 survSD.HG.new.data$pred = predict(survSD.HG, newdata = survSD.HG.new.data, type = "response", re.form = NA)
@@ -1126,18 +1126,17 @@ transLR.HG.new.data = expand.grid(density = seq(min(data.grazing$density, na.rm 
 
 
 # 95% confidence intervals
-bootstrap.transLR.HG <- bootMer(transLR.HG, FUN = function(x) predict(x, transLR.HG.new.data, re.form = NA), 
-  nsim = 100)
-transLR.HG.new.data$lwr = inv.logit(apply(bootstrap.transLR.HG$t, 2, quantile, 0.025, na.rm = T))
-transLR.HG.new.data$upr = inv.logit(apply(bootstrap.transLR.HG$t, 2, quantile, 0.975, na.rm = T))
-transLR.HG.new.data$pred = predict(transLR.HG, newdata = transLR.HG.new.data, type = "response", re.form = NA)
+transLR.HG.predict = predict(transLR.HG, newdata = transLR.HG.new.data, se.fit = T)
+transLR.HG.new.data$lwr = inv.logit(transLR.HG.predict$fit - (1.96 * transLR.HG.predict$se.fit))
+transLR.HG.new.data$upr = inv.logit(transLR.HG.predict$fit + (1.96 * transLR.HG.predict$se.fit))
+transLR.HG.new.data$pred = inv.logit(transLR.HG.predict$fit)
 
 
 # Plotting the predictions
 
 plot.transLR.HG = ggplot(transLR.HG.new.data, aes(x = density, y = pred)) + 
  geom_line(size = 3) + 
- #geom_ribbon(aes(ymin = lwr, ymax = upr), linetype = 0, alpha = 0.2) + 
+ geom_ribbon(aes(ymin = lwr, ymax = upr), linetype = 0, alpha = 0.2) + 
  xlab("Total abundance of dewy pines") + 
  ylab("Transition probability") + 
  ggtitle("LR-SR transition - High grazing") + 
@@ -1554,18 +1553,72 @@ abline(a = 0, b = 1, col = "red")
 
 # Computing the predictions of the model and the 95 % CI
 nbfsLR.LG.new.data = expand.grid(time = rownames(coef(nbfsLR.LG)))
+nbfsLR.LG.new.data$lwr = NA
+nbfsLR.LG.new.data$upr = NA
+nbfsLR.LG.new.data$pred = NA
 
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
-# 95% confidence intervals
-bootstrap.nbfsLR.LG <- bootMer(nbfsLR.LG, FUN = function(x) predict(x, nbfsLR.LG.new.data), 
-  nsim = 100)
-nbfsLR.LG.new.data$lwr = exp(apply(bootstrap.nbfsLR.LG$t, 2, quantile, 0.025, na.rm = T))
-nbfsLR.LG.new.data$upr = exp(apply(bootstrap.nbfsLR.LG$t, 2, quantile, 0.975, na.rm = T))
-nbfsLR.LG.new.data$pred = predict(nbfsLR.LG, newdata = nbfsLR.LG.new.data, type = "response")
+easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
+  # Marc Girondot - 2016-01-09
+  if (is.null(newdata)) {
+    if (any(class(model)=="glmerMod")) newdata <- model@frame
+    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
+    if (any(class(model)=="glmmadmb")) newdata <- model$frame
+  }
+  
+  ## baseline prediction, on the linear predictor scale:
+  pred0 <- predict(model, re.form=NA, newdata=newdata)
+  ## fixed-effects model matrix for new data
+  if (any(class(model)=="glmmadmb")) {
+    X <- model.matrix(delete.response(model$terms), newdata)
+  } else {
+    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
+                      newdata)
+  }
+  
+  if (any(class(model)=="glm")) {
+    # Marc Girondot - 2016-01-09
+    # Note that beta is not used
+    beta <- model$coefficients
+  } else {
+    beta <- fixef(model) ## fixed-effects coefficients
+  }
+  
+  V <- vcov(model)     ## variance-covariance matrix of beta
+  
+  # Marc Girondot - 2016-01-09
+  if (any(!(colnames(V) %in% colnames(X)))) {
+    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
+    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
+    X <- cbind(X, dfi)
+  }
+  
+  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
+  
+  ## inverse-link function
+  # Marc Girondot - 2016-01-09
+  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
+  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
+  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
+  
+  ## construct 95% Normal CIs on the link scale and
+  ##  transform back to the response (probability) scale:
+  crit <- -qnorm(alpha/2)
+  linkinv(cbind(lwr=pred0-crit*pred.se,
+                upr=pred0+crit*pred.se))
+}
+
+nbfsLR.LG.new.data$lwr = apply(nbfsLR.LG.new.data, 1, FUN = function(x) easyPredCI(nbfsLR.LG, newdata = data.frame(time = as.numeric(x[1])))[1, 1])
+
+nbfsLR.LG.new.data$upr = apply(nbfsLR.LG.new.data, 1, FUN = function(x) easyPredCI(nbfsLR.LG, newdata = data.frame(time = as.numeric(x[1])))[1, 2])
+
+nbfsLR.LG.new.data$pred = apply(nbfsLR.LG.new.data, 1, FUN = function(x) predict(nbfsLR.LG, newdata = data.frame(time = as.numeric(x[1])), type = "response"))
+
 
 nbfsLR.LG.pred = nbfsLR.LG.new.data
 nbfsLR.LG.pred$time = as.numeric(as.character(nbfsLR.LG.pred$time))
-nbfsLR.LG.pred = rbind(nbfsLR.LG.pred, c(2016, mean(nbfsLR.LG.pred$pred)))
+nbfsLR.LG.pred = rbind(nbfsLR.LG.pred, c(2016, apply(nbfsLR.LG.pred[, c(2:4)], 2, mean)))
 
 
 # Plotting the predictions
@@ -1739,19 +1792,22 @@ abline(a = 0, b = 1, col = "red")
 
 # Computing the predictions of the model and the 95 % CI
 nbfpsLR.LG.new.data = expand.grid(time = rownames(coef(nbfpsLR.LG)))
+nbfpsLR.LG.new.data$lwr = NA
+nbfpsLR.LG.new.data$upr = NA
+nbfpsLR.LG.new.data$pred = NA
 
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
-# 95% confidence intervals
-bootstrap.nbfpsLR.LG <- bootMer(nbfpsLR.LG, FUN = function(x) predict(x, nbfpsLR.LG.new.data), 
-  nsim = 100)
-nbfpsLR.LG.new.data$lwr = exp(apply(bootstrap.nbfpsLR.LG$t, 2, quantile, 0.025, na.rm = T))
-nbfpsLR.LG.new.data$upr = exp(apply(bootstrap.nbfpsLR.LG$t, 2, quantile, 0.975, na.rm = T))
-nbfpsLR.LG.new.data$pred = predict(nbfpsLR.LG, newdata = nbfpsLR.LG.new.data, type = "response")
+nbfpsLR.LG.new.data$lwr = apply(nbfpsLR.LG.new.data, 1, FUN = function(x) easyPredCI(nbfpsLR.LG, newdata = data.frame(time = as.numeric(x[1])))[1, 1])
+
+nbfpsLR.LG.new.data$upr = apply(nbfpsLR.LG.new.data, 1, FUN = function(x) easyPredCI(nbfpsLR.LG, newdata = data.frame(time = as.numeric(x[1])))[1, 2])
+
+nbfpsLR.LG.new.data$pred = apply(nbfpsLR.LG.new.data, 1, FUN = function(x) predict(nbfpsLR.LG, newdata = data.frame(time = as.numeric(x[1])), type = "response"))
+
 
 nbfpsLR.LG.pred = nbfpsLR.LG.new.data
 nbfpsLR.LG.pred$time = as.numeric(as.character(nbfpsLR.LG.pred$time))
-nbfpsLR.LG.pred = rbind(nbfpsLR.LG.pred, c(2016, mean(nbfpsLR.LG.pred$pred)))
-
+nbfpsLR.LG.pred = rbind(nbfpsLR.LG.pred, c(2016, apply(nbfpsLR.LG.pred[, c(2:4)], 2, mean)))
 
 # Plotting the predictions
 
@@ -1825,17 +1881,31 @@ abline(a = 0, b = 1, col = "red")
 nbfpsSR.HG.new.data = expand.grid(density = seq(min(data.grazing$density, na.rm = T), max(data.grazing$density, na.rm = T)))
 
 
-# 95% confidence intervals
-bootstrap.nbfpsSR.HG <- bootMer(nbfpsSR.HG, FUN = function(x) predict(x, nbfpsSR.HG.new.data, re.form = NA), 
-  nsim = 100)
-nbfpsSR.HG.new.data$lwr = exp(apply(bootstrap.nbfpsSR.HG$t, 2, quantile, 0.025, na.rm = T))
-nbfpsSR.HG.new.data$upr = exp(apply(bootstrap.nbfpsSR.HG$t, 2, quantile, 0.975, na.rm = T))
-nbfpsSR.HG.new.data$pred = predict(nbfpsSR.HG, newdata = nbfpsSR.HG.new.data, type = "response", re.form = NA)
+# Computing the predictions of the model and the 95 % CI
+nbfpsSR.HG.new.data = expand.grid(time = rownames(coef(nbfpsSR.HG)),
+                                  density = seq(min(data.grazing$density, na.rm = T), max(data.grazing$density, na.rm = T)))
+nbfpsSR.HG.new.data$lwr = NA
+nbfpsSR.HG.new.data$upr = NA
+nbfpsSR.HG.new.data$pred = NA
+
+
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
+
+nbfpsSR.HG.new.data$lwr = apply(nbfpsSR.HG.new.data, 1, FUN = function(x) easyPredCI(nbfpsSR.HG, newdata = data.frame(time = as.numeric(x[1]), density = as.numeric(x[2])))[1, 1])
+
+nbfpsSR.HG.new.data$upr = apply(nbfpsSR.HG.new.data, 1, FUN = function(x) easyPredCI(nbfpsSR.HG, newdata = data.frame(time = as.numeric(x[1]), density = as.numeric(x[2])))[1, 2])
+
+nbfpsSR.HG.new.data$pred = apply(nbfpsSR.HG.new.data, 1, FUN = function(x) predict(nbfpsSR.HG, newdata = data.frame(time = as.numeric(x[1]), density = as.numeric(x[2])), type = "response"))
+
+nbfpsSR.HG.RE.avg = data.frame(density = aggregate(pred ~ density, data = nbfpsSR.HG.new.data, mean)$density,
+                                  pred = aggregate(pred ~ density, data = nbfpsSR.HG.new.data, mean)$pred,
+                                  lwr = aggregate(lwr ~ density, data = nbfpsSR.HG.new.data, mean)$lwr,
+                                  upr = aggregate(upr ~ density, data = nbfpsSR.HG.new.data, mean)$upr)
 
 
 # Plotting the predictions
 
-plot.nbfpsSR.HG = ggplot(nbfpsSR.HG.new.data, aes(x = density, y = pred)) + 
+plot.nbfpsSR.HG = ggplot(nbfpsSR.HG.RE.avg, aes(x = density, y = pred)) + 
  geom_line(size = 3) + 
  geom_ribbon(aes(ymin = lwr, ymax = upr), linetype = 0, alpha = 0.2) + 
  xlab("Total abundance of dewy pines") + 
@@ -1902,15 +1972,18 @@ abline(a = 0, b = 1, col = "red")
 
 
 # Computing the predictions of the model and the 95 % CI
-nbfpsLR.HG.new.data = expand.grid(time = rownames(coef(nbfpsLR.HG)$time))
+nbfpsLR.HG.new.data = expand.grid(time = rownames(coef(nbfpsLR.HG)))
+nbfpsLR.HG.new.data$lwr = NA
+nbfpsLR.HG.new.data$upr = NA
+nbfpsLR.HG.new.data$pred = NA
 
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
-# 95% confidence intervals
-bootstrap.nbfpsLR.HG <- bootMer(nbfpsLR.HG, FUN = function(x) predict(x, nbfpsLR.HG.new.data, re.form = NA), 
-  nsim = 100)
-nbfpsLR.HG.new.data$lwr = exp(apply(bootstrap.nbfpsLR.HG$t, 2, quantile, 0.025, na.rm = T))
-nbfpsLR.HG.new.data$upr = exp(apply(bootstrap.nbfpsLR.HG$t, 2, quantile, 0.975, na.rm = T))
-nbfpsLR.HG.new.data$pred = predict(nbfpsLR.HG, newdata = nbfpsLR.HG.new.data, type = "response", re.form = NA)
+nbfpsLR.HG.new.data$lwr = apply(nbfpsLR.HG.new.data, 1, FUN = function(x) easyPredCI(nbfpsLR.HG, newdata = data.frame(time = as.numeric(x[1])))[1, 1])
+
+nbfpsLR.HG.new.data$upr = apply(nbfpsLR.HG.new.data, 1, FUN = function(x) easyPredCI(nbfpsLR.HG, newdata = data.frame(time = as.numeric(x[1])))[1, 2])
+
+nbfpsLR.HG.new.data$pred = apply(nbfpsLR.HG.new.data, 1, FUN = function(x) predict(nbfpsLR.HG, newdata = data.frame(time = as.numeric(x[1])), type = "response"))
 
 
 # Plotting the predictions

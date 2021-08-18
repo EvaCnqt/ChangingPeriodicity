@@ -40,7 +40,7 @@ load.librairies()
 ## 1.3. Loading and preparing data ----
 # --------------------------------
 
-data.droso = read.csv("DewyPinesTSF1_to_3.csv")
+data.droso = read.csv("DewyPinesTSF1_to_3_Data.csv")
 head(data.droso)
 
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
