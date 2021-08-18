@@ -45,10 +45,9 @@ data.marmots = read.csv("MarmotsData.csv")
 head(data.marmots)
 
 
-# Defining year, season, and location as a factor
+# Defining year as a factor
 
 data.marmots$year = factor(data.marmots$year)
-data.marmots$season = factor(data.marmots$season)
 
 
 
@@ -211,7 +210,7 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 survY.new.data = expand.grid(year = levels(data.marmots$year),
-                             season = levels(data.marmots$season))
+                             season = unique(data.marmots$season))
 
 
 # 95% confidence intervals
@@ -329,7 +328,7 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 survNR.new.data = expand.grid(year = levels(data.marmots$year),
-                               season = levels(data.marmots$season))
+                               season = unique(data.marmots$season))
 
 
 # 95% confidence intervals
@@ -443,7 +442,7 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 survR.new.data = expand.grid(year = levels(data.marmots$year),
-                              season = levels(data.marmots$season))
+                              season = unique(data.marmots$season))
 
 
 # 95% confidence intervals
