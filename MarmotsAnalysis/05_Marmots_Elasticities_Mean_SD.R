@@ -2,11 +2,13 @@
 #
 # RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
 #
-# This script uses the seasonal vital rate estimate for the marmots population. 
-# The aim of this script is to calculate each vital rate elasticity to changes in the mean or standard deviation, to assess whether vital rates that vary the most seasonally, but not necessarily between years, are the ones with the lowest elasticities.
+# This script uses the seasonal vital rate-estimates for the marmots population. 
+# The aim of this script is to calculate (1) the elasticity of the population growth rate to changes in the mean or standard deviation of each vital rate, and (2) the relative effect of variability (Morris et al. 2008), i.e. the proportion of the stochastic elasticity E(S) attributed to changes in the variability of a given vital rate category. 
 #
 # Author: Eva Conquet
 #
+# Morris, W. F., et al. 2008. Longevity can buffer plant and animal populations 
+# against changing climatic variability. Ecology 89: 19–25.
 ###########################################################################
 
 
@@ -907,7 +909,7 @@ elast.df$elast.up[which(elast.df$vr == "Recruitment")] = c(quantile(abs(apply(el
 ## 4.3. Processing relative effect of variability results ---- 
 # -------------------------------------------------------
 
-# sum(elasticity to SD of all survival/growth/reproductive/vital rates) / sum(elasticity to the mean + elasticity to SD of all vital rates)
+# Following Morris et al. (2008), we compute the ratio: sum(elasticity to SD of all vital rates in one of the survival/transition/reproductive rates categories) / sum(elasticity to the mean + elasticity to SD of all vital rates)
 
 ## 4.3.1. Survival rates ----
 # ----------------------
