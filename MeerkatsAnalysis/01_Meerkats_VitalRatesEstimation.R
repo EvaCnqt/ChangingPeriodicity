@@ -48,13 +48,16 @@ load.librairies()
 data.meerkats = read.csv("MeerkatsData.csv")
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
+# Turning year into a factor
+
+data.meerkats$year = as.factor(data.meerkats$year)
+
 # Creating subsets for the different stages
 
 juveniles = data.meerkats[data.meerkats$stage == "J", ]
 subadults = data.meerkats[data.meerkats$stage == "S", ]
 helpers   = data.meerkats[data.meerkats$stage == "H", ]
 dominants = data.meerkats[data.meerkats$stage == "D", ]
-
 
 
 
@@ -271,7 +274,7 @@ abline(a = 0, b = 1, col = "red")
 
 # Computing the predictions of the model and the 95 % CI
 
-survS.new.data = expand.grid(year = levels(data.meerkats$year),
+survS.new.data = expand.grid(year = unique(data.meerkats$year),
                              season = unique(data.meerkats$season),
                              density = seq(min(data.meerkats$density), max(data.meerkats$density), length.out = 100))
 
@@ -512,7 +515,7 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 survD.new.data = expand.grid(year = levels(data.meerkats$year),
-                             season = levels(data.meerkats$season))
+                             season = unique(data.meerkats$season))
 
 
 # 95% confidence intervals
@@ -648,7 +651,7 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 emig.new.data = expand.grid(year = levels(data.meerkats$year),
-                            season = levels(data.meerkats$season),
+                            season = unique(data.meerkats$season),
                             density = seq(min(data.meerkats$density), max(data.meerkats$density), length.out = 100))
 
 
@@ -755,7 +758,7 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 transition.new.data = expand.grid(year = levels(data.meerkats$year),
-                                  season = levels(data.meerkats$season),
+                                  season = unique(data.meerkats$season),
                                   density = seq(min(data.meerkats$density), max(data.meerkats$density), length.out = 100))
 
 
@@ -894,26 +897,95 @@ abline(a = 0, b = 1, col = "red")
 
 
 # Computing the predictions of the model and the 95 % CI
+recruitment.H.new.data = expand.grid(year = unique(data.meerkats$year),
+                                      season = unique(data.meerkats$season),
+                                      density = seq(min(data.meerkats$density),15,length.out = 100))
+recruitment.H.new.data$lwr = NA
+recruitment.H.new.data$upr = NA
+recruitment.H.new.data$pred = NA
 
-recruitment.H.new.data = expand.grid(year = levels(data.meerkats$year),
-                                     season = levels(data.meerkats$season),
-                                     density = seq(min(data.meerkats$density), max(data.meerkats$density), length.out = 100))
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
+easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
+  # Marc Girondot - 2016-01-09
+  if (is.null(newdata)) {
+    if (any(class(model)=="glmerMod")) newdata <- model@frame
+    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
+    if (any(class(model)=="glmmadmb")) newdata <- model$frame
+  }
+  
+  ## baseline prediction, on the linear predictor scale:
+  pred0 <- predict(model, re.form=NA, newdata=newdata)
+  ## fixed-effects model matrix for new data
+  if (any(class(model)=="glmmadmb")) {
+    X <- model.matrix(delete.response(model$terms), newdata)
+  } else {
+    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
+                      newdata)
+  }
+  
+  if (any(class(model)=="glm")) {
+    # Marc Girondot - 2016-01-09
+    # Note that beta is not used
+    beta <- model$coefficients
+  } else {
+    beta <- fixef(model) ## fixed-effects coefficients
+  }
+  
+  V <- vcov(model)     ## variance-covariance matrix of beta
+  
+  # Marc Girondot - 2016-01-09
+  if (any(!(colnames(V) %in% colnames(X)))) {
+    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
+    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
+    X <- cbind(X, dfi)
+  }
+  
+  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
+  
+  ## inverse-link function
+  # Marc Girondot - 2016-01-09
+  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
+  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
+  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
+  
+  ## construct 95% Normal CIs on the link scale and
+  ##  transform back to the response (probability) scale:
+  crit <- -qnorm(alpha/2)
+  linkinv(cbind(lwr=pred0-crit*pred.se,
+                upr=pred0+crit*pred.se))
+}
 
-# 95% confidence intervals
+recruitment.H.new.data$lwr[which(recruitment.H.new.data$season == "rain")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 1])
+recruitment.H.new.data$lwr[which(recruitment.H.new.data$season == "dry")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 1])
 
-bootstrap.recruitment.H <- bootMer(recruitment.H, FUN = function(x) predict(x, recruitment.H.new.data, re.form = NA), nsim = 100)
-recruitment.H.new.data$lwr = exp(apply(bootstrap.recruitment.H$t, 2, quantile, 0.025, na.rm = T))
-recruitment.H.new.data$upr = exp(apply(bootstrap.recruitment.H$t, 2, quantile, 0.975, na.rm = T))
-recruitment.H.new.data$pred = predict(recruitment.H, newdata = recruitment.H.new.data, type = "response", re.form = NA)
+recruitment.H.new.data$upr[which(recruitment.H.new.data$season == "rain")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 2])
+recruitment.H.new.data$upr[which(recruitment.H.new.data$season == "dry")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 2])
 
-plot.recruitment.H = ggplot(recruitment.H.new.data, aes(x = density, y = pred)) + 
+recruitment.H.new.data$pred[which(recruitment.H.new.data$season == "rain")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "rain"), ], 1, FUN = function(x) predict(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[1])
+recruitment.H.new.data$pred[which(recruitment.H.new.data$season == "dry")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "dry"), ], 1, FUN = function(x) predict(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])), type = "response")[2])
+
+recruitment.H.RE.avg = data.frame(season = aggregate(pred ~ season + density, data = recruitment.H.new.data, mean)$season,
+                                   density = aggregate(pred ~ season + density, data = recruitment.H.new.data, mean)$density,
+                                   pred = aggregate(pred ~ season + density, data = recruitment.H.new.data, mean)$pred,
+                                   lwr = aggregate(lwr ~ season + density, data = recruitment.H.new.data, mean)$lwr,
+                                   upr = aggregate(upr ~ season + density, data = recruitment.H.new.data, mean)$upr)
+
+plot.recruitment.H = ggplot(recruitment.H.RE.avg, aes(x = density, y = pred, colour = season)) + 
   #facet_wrap(~year)+
   geom_line(size = 3) +
-  geom_ribbon(aes(ymin = lwr, ymax = upr), linetype = 0, alpha = 0.2) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr, fill = season), linetype = 0, alpha = 0.2) +
   xlab("Population density (indiv./km2)") +
   ylab("Number of pups") +
   ggtitle("Helper recruitment") +
+  scale_fill_manual(name = "Season",
+                    breaks = c("rain", "dry"),
+                    labels = c("Wet", "Dry"),
+                    values = c(cbbPalette[1], cbbPalette[2])) +
+  scale_colour_manual(name = "Season",
+                      breaks = c("rain", "dry"),
+                      labels = c("Wet", "Dry"),
+                      values = c(cbbPalette[1], cbbPalette[2])) +
   theme_bw() +
   theme(axis.title.x = element_text(size = 45, colour = "black", margin = margin(t = 10, r = 0, b = 0, l = 0)), 
         axis.title.y = element_text(size = 45, colour = "black", margin = margin(t = 0, r = 10, b = 0, l = 0)), 
@@ -1072,56 +1144,6 @@ recruitment.D8.new.data$upr = NA
 recruitment.D8.new.data$pred = NA
 
 # 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
-
-easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
-  # Marc Girondot - 2016-01-09
-  if (is.null(newdata)) {
-    if (any(class(model)=="glmerMod")) newdata <- model@frame
-    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
-    if (any(class(model)=="glmmadmb")) newdata <- model$frame
-  }
-  
-  ## baseline prediction, on the linear predictor scale:
-  pred0 <- predict(model, re.form=NA, newdata=newdata)
-  ## fixed-effects model matrix for new data
-  if (any(class(model)=="glmmadmb")) {
-    X <- model.matrix(delete.response(model$terms), newdata)
-  } else {
-    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
-                      newdata)
-  }
-  
-  if (any(class(model)=="glm")) {
-    # Marc Girondot - 2016-01-09
-    # Note that beta is not used
-    beta <- model$coefficients
-  } else {
-    beta <- fixef(model) ## fixed-effects coefficients
-  }
-  
-  V <- vcov(model)     ## variance-covariance matrix of beta
-  
-  # Marc Girondot - 2016-01-09
-  if (any(!(colnames(V) %in% colnames(X)))) {
-    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
-    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
-    X <- cbind(X, dfi)
-  }
-  
-  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
-  
-  ## inverse-link function
-  # Marc Girondot - 2016-01-09
-  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
-  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
-  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
-  
-  ## construct 95% Normal CIs on the link scale and
-  ##  transform back to the response (probability) scale:
-  crit <- -qnorm(alpha/2)
-  linkinv(cbind(lwr=pred0-crit*pred.se,
-                upr=pred0+crit*pred.se))
-}
 
 recruitment.D8.new.data$lwr[which(recruitment.D8.new.data$season == "rain")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 1])
 recruitment.D8.new.data$lwr[which(recruitment.D8.new.data$season == "dry")] = apply(recruitment.D8.new.data[which(recruitment.D8.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.D8, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 1])

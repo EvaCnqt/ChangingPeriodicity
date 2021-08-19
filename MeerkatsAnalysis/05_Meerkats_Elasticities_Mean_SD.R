@@ -2,11 +2,13 @@
 #
 # RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
 #
-# This script uses the seasonal vital rate estimate for the meerkats population. 
-# The aim of this script is to calculate each vital rate elasticity and between-year variation, to assess whether vital rates that vary the most seasonally, but not necessarily between years, are the ones with the lowest elasticities
+# This script uses the seasonal vital rate-estimates for the meerkat population. 
+# The aim of this script is to calculate (1) the elasticity of the population growth rate to changes in the mean or standard deviation of each vital rate, and (2) the relative effect of variability (Morris et al. 2008), i.e. the proportion of the stochastic elasticity E(S) attributed to changes in the variability of a given vital rate category. 
 #
 # Author: Eva Conquet
 #
+# Morris, W. F., et al. 2008. Longevity can buffer plant and animal populations 
+# against changing climatic variability. Ecology 89: 19–25.
 ###########################################################################
 
 
@@ -38,7 +40,7 @@ load.librairies()
 
 ## 1.3. Loading and preparing data ----
 # --------------------------------  
-data.meerkats = read.csv("MeerkatsData.csv", stringsAsFactors = F, na.strings = c("", "NA"))
+data.meerkats = read.csv("RScripts_ForSubmission/MeerkatsData.csv", stringsAsFactors = F, na.strings = c("", "NA"))
 head(data.meerkats)
 
 load("GLMM_survJ.RData")
@@ -2017,7 +2019,7 @@ elast.df$elast.up[which(elast.df$vr == "D recruitment (wet)")] = c(quantile(abs(
 ## 4.3. Processing relative effect of variability results ----
 # -------------------------------------------------------
 
-# sum(elasticity to SD of all survival/growth/reproductive/vital rates) / sum(elasticity to the mean + elasticity to SD of all vital rates)
+# Following Morris et al. (2008), we compute the ratio: sum(elasticity to SD of all vital rates in one of the survival/transition/reproductive rates categories) / sum(elasticity to the mean + elasticity to SD of all vital rates)
 
 ## 4.3.1. Survival rates ----
 # ----------------------
