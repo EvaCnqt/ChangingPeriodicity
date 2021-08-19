@@ -2,7 +2,7 @@
 #
 # RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
 #
-# This script uses the seasonal vital rate-estimates for the marmots population. 
+# This script uses the seasonal vital rate-estimates for the marmot population. 
 # The aim of this script is to calculate (1) the elasticity of the population growth rate to changes in the mean or standard deviation of each vital rate, and (2) the relative effect of variability (Morris et al. 2008), i.e. the proportion of the stochastic elasticity E(S) attributed to changes in the variability of a given vital rate category. 
 #
 # Author: Eva Conquet
