@@ -3,9 +3,13 @@
 # RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
 #
 # This script uses the post-fire state-specific vital rate estimates for the dewy pine population. 
-# The aim of this script is to calculate the sensitivity of the population to each post-fire state using a megamatrix.
+# The aim of this script is to calculate the sensitivity of the population to each post-fire state using a megamatrix, following Pascarella and Horvitz (1998).
 #
 # Author: Eva Conquet
+#
+# Pascarella, J. B., and C. C. Horvitz. 1998. Hurricane disturbance and the population
+# dynamics of a tropical understory shrub: megamatrix elasticity analysis. 
+# Ecology 79: 547–563.
 ###########################################################################
 
 
@@ -246,7 +250,7 @@ buildmat.stochastic <- function(year){
 }
 
 
-## 2.2. Creating the megamatrix (following Pascarella and Horvitz 1998 in Ecology) ----
+## 2.2. Creating the megamatrix (following Pascarella and Horvitz, 1998) ----
 # --------------------------------------------------------------------------------
 
 # 5 life-history stages
