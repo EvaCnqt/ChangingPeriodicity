@@ -38,7 +38,76 @@ load.librairies = function(){
 load.librairies()
 
 
-## 1.3. Loading and preparing data ----
+## 1.3. Loading functions ----
+# -----------------------
+
+# Function to test for overdispersion in GLMMs.
+# Taken from material from Prof. Ben Bolker (accessible at https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html)
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model,type="pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+
+
+# Function to compute 95 % CIs for glmmPQL models
+# Taken from Prof. Marc Girondot (accessible at https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
+
+easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
+  # Marc Girondot - 2016-01-09
+  if (is.null(newdata)) {
+    if (any(class(model)=="glmerMod")) newdata <- model@frame
+    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
+    if (any(class(model)=="glmmadmb")) newdata <- model$frame
+  }
+  
+  ## baseline prediction, on the linear predictor scale:
+  pred0 <- predict(model, re.form=NA, newdata=newdata)
+  ## fixed-effects model matrix for new data
+  if (any(class(model)=="glmmadmb")) {
+    X <- model.matrix(delete.response(model$terms), newdata)
+  } else {
+    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
+                      newdata)
+  }
+  
+  if (any(class(model)=="glm")) {
+    # Marc Girondot - 2016-01-09
+    # Note that beta is not used
+    beta <- model$coefficients
+  } else {
+    beta <- fixef(model) ## fixed-effects coefficients
+  }
+  
+  V <- vcov(model)     ## variance-covariance matrix of beta
+  
+  # Marc Girondot - 2016-01-09
+  if (any(!(colnames(V) %in% colnames(X)))) {
+    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
+    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
+    X <- cbind(X, dfi)
+  }
+  
+  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
+  
+  ## inverse-link function
+  # Marc Girondot - 2016-01-09
+  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
+  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
+  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
+  
+  ## construct 95% Normal CIs on the link scale and
+  ##  transform back to the response (probability) scale:
+  crit <- -qnorm(alpha/2)
+  linkinv(cbind(lwr=pred0-crit*pred.se,
+                upr=pred0+crit*pred.se))
+}
+
+
+## 1.4. Loading and preparing data ----
 # --------------------------------
 
 data.marmots = read.csv("MarmotsData.csv")
@@ -509,14 +578,8 @@ r.squaredGLMM(recruit1, null = glmer(recruits ~ 1 + (1|year), data.marmots[data.
 summary(recruit1)
 recruit = recruit1
 
-overdisp_fun <- function(model) {
-  rdf <- df.residual(model)
-  rp <- residuals(model,type="pearson")
-  Pearson.chisq <- sum(rp^2)
-  prat <- Pearson.chisq/rdf
-  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
-  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
-}
+
+# Checking for over/underdispersion and fitting a quasi-Poisson model
 
 overdisp_fun(recruit)
 

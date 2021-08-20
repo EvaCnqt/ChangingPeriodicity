@@ -26,7 +26,6 @@ rm(list = ls())
 
 load.librairies = function(){
   library(boot)
-  library(cowplot)
   library(ggplot2)
 }
 
