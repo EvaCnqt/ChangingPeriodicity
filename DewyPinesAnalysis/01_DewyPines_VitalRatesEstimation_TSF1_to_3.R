@@ -25,12 +25,10 @@ rm(list = ls())
 # -----------------------
 
 load.librairies = function(){
- library(lme4)
  library(bbmle)
  library(MASS)
  library(boot)
  library(ggplot2)
- library(multcomp)
  library(MuMIn)
 }
 

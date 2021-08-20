@@ -30,14 +30,82 @@ load.librairies = function(){
  library(MASS)
  library(boot)
  library(ggplot2)
- library(multcomp)
  library(MuMIn)
 }
 
 load.librairies()
 
 
-## 1.3. Loading and preparing data ----
+## 1.3. Loading functions ----
+# -----------------------
+
+# Function to test for overdispersion in GLMMs.
+# Taken from material from Prof. Ben Bolker (accessible at https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html)
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model,type="pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+
+
+# Function to compute 95 % CIs for glmmPQL models
+# Taken from Prof. Marc Girondot (accessible at https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
+
+easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
+  # Marc Girondot - 2016-01-09
+  if (is.null(newdata)) {
+    if (any(class(model)=="glmerMod")) newdata <- model@frame
+    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
+    if (any(class(model)=="glmmadmb")) newdata <- model$frame
+  }
+  
+  ## baseline prediction, on the linear predictor scale:
+  pred0 <- predict(model, re.form=NA, newdata=newdata)
+  ## fixed-effects model matrix for new data
+  if (any(class(model)=="glmmadmb")) {
+    X <- model.matrix(delete.response(model$terms), newdata)
+  } else {
+    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
+                      newdata)
+  }
+  
+  if (any(class(model)=="glm")) {
+    # Marc Girondot - 2016-01-09
+    # Note that beta is not used
+    beta <- model$coefficients
+  } else {
+    beta <- fixef(model) ## fixed-effects coefficients
+  }
+  
+  V <- vcov(model)     ## variance-covariance matrix of beta
+  
+  # Marc Girondot - 2016-01-09
+  if (any(!(colnames(V) %in% colnames(X)))) {
+    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
+    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
+    X <- cbind(X, dfi)
+  }
+  
+  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
+  
+  ## inverse-link function
+  # Marc Girondot - 2016-01-09
+  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
+  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
+  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
+  
+  ## construct 95% Normal CIs on the link scale and
+  ##  transform back to the response (probability) scale:
+  crit <- -qnorm(alpha/2)
+  linkinv(cbind(lwr=pred0-crit*pred.se,
+                upr=pred0+crit*pred.se))
+}
+
+
+## 1.4. Loading and preparing data ----
 # --------------------------------
 
 data.grazing = read.csv("DewyPinesTSF3plus_Data.csv")
@@ -70,6 +138,8 @@ yearly.density.per.square.HG$density = yearly.density.per.square.HG$density/nbsq
 yearly.density.per.square.HG = yearly.density.per.square.HG[- nrow(yearly.density.per.square.HG), ]
 
 nbsquares.TSF3plus = data.frame()
+
+
 
 
 ###########################################################################
@@ -1520,14 +1590,8 @@ nbfsLR.LG3 = glmer(fs ~ density + density2 + (1|time), data = data.grazing[data.
 
 AICctab(nbfsLR.LG1, nbfsLR.LG2, nbfsLR.LG3, base = T) # All three models are in 2 dAIC. nbfsLR.LG1 is the simplest model.
 
-overdisp_fun <- function(model) {
-  rdf <- df.residual(model)
-  rp <- residuals(model,type="pearson")
-  Pearson.chisq <- sum(rp^2)
-  prat <- Pearson.chisq/rdf
-  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
-  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
-}
+
+# Checking for over/underdispersion and fitting a quasi-Poisson model
 
 overdisp_fun(nbfsLR.LG1)
 
@@ -1557,57 +1621,7 @@ nbfsLR.LG.new.data$lwr = NA
 nbfsLR.LG.new.data$upr = NA
 nbfsLR.LG.new.data$pred = NA
 
-# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
-
-easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
-  # Marc Girondot - 2016-01-09
-  if (is.null(newdata)) {
-    if (any(class(model)=="glmerMod")) newdata <- model@frame
-    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
-    if (any(class(model)=="glmmadmb")) newdata <- model$frame
-  }
-  
-  ## baseline prediction, on the linear predictor scale:
-  pred0 <- predict(model, re.form=NA, newdata=newdata)
-  ## fixed-effects model matrix for new data
-  if (any(class(model)=="glmmadmb")) {
-    X <- model.matrix(delete.response(model$terms), newdata)
-  } else {
-    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
-                      newdata)
-  }
-  
-  if (any(class(model)=="glm")) {
-    # Marc Girondot - 2016-01-09
-    # Note that beta is not used
-    beta <- model$coefficients
-  } else {
-    beta <- fixef(model) ## fixed-effects coefficients
-  }
-  
-  V <- vcov(model)     ## variance-covariance matrix of beta
-  
-  # Marc Girondot - 2016-01-09
-  if (any(!(colnames(V) %in% colnames(X)))) {
-    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
-    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
-    X <- cbind(X, dfi)
-  }
-  
-  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
-  
-  ## inverse-link function
-  # Marc Girondot - 2016-01-09
-  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
-  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
-  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
-  
-  ## construct 95% Normal CIs on the link scale and
-  ##  transform back to the response (probability) scale:
-  crit <- -qnorm(alpha/2)
-  linkinv(cbind(lwr=pred0-crit*pred.se,
-                upr=pred0+crit*pred.se))
-}
+# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function 
 
 nbfsLR.LG.new.data$lwr = apply(nbfsLR.LG.new.data, 1, FUN = function(x) easyPredCI(nbfsLR.LG, newdata = data.frame(time = as.numeric(x[1])))[1, 1])
 
@@ -1768,6 +1782,9 @@ nbfpsLR.LG3 = glmer(fps ~ density + density2 + (1|time), data = data.grazing[dat
 
 AICctab(nbfpsLR.LG1, nbfpsLR.LG2, nbfpsLR.LG3, base = T) # nbfpsLR.LG1 and nbfpsLR.LG2 are in 2 dAIC. nbfpsLR.LG1 is the simplest model.
 
+
+# Checking for over/underdispersion and fitting a quasi-Poisson model
+
 overdisp_fun(nbfpsLR.LG1)
 
 nbfpsLR.LG.quasiP = MASS::glmmPQL(fps ~ 1, random =  ~ 1|time, family = poisson, data = data.grazing[data.grazing$stage == "LR" & data.grazing$LS == "LG", ])
@@ -1854,6 +1871,9 @@ nbfpsSR.HG2 = glmer(fps ~ density + (1|time), data = data.grazing[data.grazing$s
 nbfpsSR.HG3 = glmer(fps ~ density + density2 + (1|time), data = data.grazing[data.grazing$stage == "SR" & data.grazing$LS == "HG", ], family = poisson, control = glmerControl(optimizer = "bobyqa", calc.derivs = F))
 
 AICctab(nbfpsSR.HG1, nbfpsSR.HG2, nbfpsSR.HG3, base = T) # The best model is nbfpsSR.HG2.
+
+
+# Checking for over/underdispersion and fitting a quasi-Poisson model
 
 overdisp_fun(nbfpsSR.HG2)
 
@@ -1948,6 +1968,9 @@ nbfpsLR.HG2 = glmer(fps ~ density + (1|time), data = data.grazing[data.grazing$s
 nbfpsLR.HG3 = glmer(fps ~ density + density2 + (1|time), data = data.grazing[data.grazing$stage == "LR" & data.grazing$LS == "HG", ], family = poisson, control = glmerControl(optimizer = "bobyqa", calc.derivs = F))
 
 AICctab(nbfpsLR.HG1, nbfpsLR.HG2, nbfpsLR.HG3, base = T) # nbfpsLR.HG1 and nbfpsLR.HG3 are in 2 dAIC. nbfpsLR.HG1 is the simplest model. 
+
+
+# Checking for over/underdispersion and fitting a quasi-Poisson model
 
 overdisp_fun(nbfpsLR.HG1)
 
