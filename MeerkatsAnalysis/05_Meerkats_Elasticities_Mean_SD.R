@@ -28,9 +28,6 @@ rm(list = ls())
 # -----------------------
 
 load.librairies = function(){
-  library(viridis)
-  library(bbmle)
-  library(lubridate)
   library(lme4)
   library(ggplot2)
 }

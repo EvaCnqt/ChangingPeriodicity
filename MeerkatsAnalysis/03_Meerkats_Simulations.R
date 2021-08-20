@@ -27,7 +27,6 @@ rm(list = ls())
 
 load.librairies = function(){
   library(boot)
-  library(lubridate)
 }
 
 load.librairies()
