@@ -1,6 +1,7 @@
 ##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
 # This script contains the function needed to project the marmot population dynamics under scenarios
 # of higher or lower seasonality in vital rates. 

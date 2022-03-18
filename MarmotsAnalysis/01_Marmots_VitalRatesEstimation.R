@@ -1,6 +1,7 @@
 ##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 # 
 # This script uses the capture-recapture data of a marmot population in the upper East River Valley nearby 
 # Gothic, Colorado, United States, collected between 1976 and 2016. 
@@ -43,42 +44,45 @@ load.librairies()
 
 # Function to test for overdispersion in GLMMs.
 # Taken from material from Prof. Ben Bolker (accessible at https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html)
-overdisp_fun <- function(model) {
+overdisp_fun <- function(model){
   rdf <- df.residual(model)
-  rp <- residuals(model,type="pearson")
+  rp <- residuals(model,type = "pearson")
   Pearson.chisq <- sum(rp^2)
   prat <- Pearson.chisq/rdf
-  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
-  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+  pval <- pchisq(Pearson.chisq, df = rdf, lower.tail = FALSE)
+  c(chisq = Pearson.chisq, ratio = prat, rdf = rdf, p = pval)
 }
 
 
 # Function to compute 95 % CIs for glmmPQL models
 # Taken from Prof. Marc Girondot (accessible at https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
-easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
+easyPredCI <- function(model, newdata = NULL, alpha = 0.05){
   # Marc Girondot - 2016-01-09
-  if (is.null(newdata)) {
-    if (any(class(model)=="glmerMod")) newdata <- model@frame
-    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
-    if (any(class(model)=="glmmadmb")) newdata <- model$frame
+  if (is.null(newdata)){
+    
+    if (any(class(model) == "glmerMod")) newdata <- model@frame
+    if (any(class(model) == "glmmPQL") | any(class(model) == "glm")) newdata <- model$data
+    if (any(class(model) == "glmmadmb")) newdata <- model$frame
   }
   
   ## baseline prediction, on the linear predictor scale:
-  pred0 <- predict(model, re.form=NA, newdata=newdata)
+  pred0 <- predict(model, re.form = NA, newdata = newdata)
   ## fixed-effects model matrix for new data
-  if (any(class(model)=="glmmadmb")) {
+  if (any(class(model) == "glmmadmb")){
     X <- model.matrix(delete.response(model$terms), newdata)
-  } else {
-    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
+  } 
+  else{
+    X <- model.matrix(formula(model, fixed.only = TRUE)[-2],
                       newdata)
   }
   
-  if (any(class(model)=="glm")) {
+  if (any(class(model) == "glm")){
     # Marc Girondot - 2016-01-09
     # Note that beta is not used
     beta <- model$coefficients
-  } else {
+  } 
+  else{
     beta <- fixef(model) ## fixed-effects coefficients
   }
   
@@ -86,7 +90,7 @@ easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
   
   # Marc Girondot - 2016-01-09
   if (any(!(colnames(V) %in% colnames(X)))) {
-    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
+    dfi <- matrix(data = rep(0, dim(X)[1] * sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
     colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
     X <- cbind(X, dfi)
   }
@@ -95,15 +99,15 @@ easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
   
   ## inverse-link function
   # Marc Girondot - 2016-01-09
-  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
-  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
-  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
+  if (any(class(model) == "glmmPQL") | any(class(model) == "glm")) linkinv <- model$family$linkinv
+  if (any(class(model) == "glmerMod")) linkinv <- model@resp$family$linkinv
+  if (any(class(model) == "glmmadmb")) linkinv <- model$ilinkfun
   
   ## construct 95% Normal CIs on the link scale and
   ##  transform back to the response (probability) scale:
   crit <- -qnorm(alpha/2)
-  linkinv(cbind(lwr=pred0-crit*pred.se,
-                upr=pred0+crit*pred.se))
+  linkinv(cbind(lwr = pred0 - crit * pred.se,
+                upr = pred0 + crit * pred.se))
 }
 
 
@@ -123,8 +127,8 @@ data.marmots$year = factor(data.marmots$year)
 
 ###########################################################################
 #
-# 2. Fitting Generalized Linear Mixed Models (GLMMs) to estimate 
-#    the vital rates ----
+# 2. Fitting Generalized Linear Mixed Models (GLMMs) ----
+# to estimate the vital rates
 #
 ###########################################################################
 
@@ -610,59 +614,6 @@ abline(a = 0, b = 1, col = "red")
 # Computing the predictions of the model and the 95 % CI
 
 recruit.new.data = data.frame(year = levels(data.marmots$year))
-
-
-# 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
-
-easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
-  # Marc Girondot - 2016-01-09
-  if (is.null(newdata)) {
-    if (any(class(model)=="glmerMod")) newdata <- model@frame
-    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
-    if (any(class(model)=="glmmadmb")) newdata <- model$frame
-  }
-  
-  ## baseline prediction, on the linear predictor scale:
-  pred0 <- predict(model, re.form=NA, newdata=newdata)
-  ## fixed-effects model matrix for new data
-  if (any(class(model)=="glmmadmb")) {
-    X <- model.matrix(delete.response(model$terms), newdata)
-  } else {
-    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
-                      newdata)
-  }
-  
-  if (any(class(model)=="glm")) {
-    # Marc Girondot - 2016-01-09
-    # Note that beta is not used
-    beta <- model$coefficients
-  } else {
-    beta <- fixef(model) ## fixed-effects coefficients
-  }
-  
-  V <- vcov(model)     ## variance-covariance matrix of beta
-  
-  # Marc Girondot - 2016-01-09
-  if (any(!(colnames(V) %in% colnames(X)))) {
-    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
-    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
-    X <- cbind(X, dfi)
-  }
-  
-  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
-  
-  ## inverse-link function
-  # Marc Girondot - 2016-01-09
-  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
-  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
-  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
-  
-  ## construct 95% Normal CIs on the link scale and
-  ##  transform back to the response (probability) scale:
-  crit <- -qnorm(alpha/2)
-  linkinv(cbind(lwr=pred0-crit*pred.se,
-                upr=pred0+crit*pred.se))
-}
 
 recruit.new.data$lwr = easyPredCI(recruit, newdata = recruit.new.data)[, 1]
 recruit.new.data$upr = easyPredCI(recruit, newdata = recruit.new.data)[, 2]

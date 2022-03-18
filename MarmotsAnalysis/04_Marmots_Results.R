@@ -1,6 +1,7 @@
 ##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
 # This script contains the code to obtain the result plots for the marmot analysis. 
 #
@@ -188,7 +189,7 @@ dev.off()
 
 ###########################################################################
 #
-# 5. Saving results file
+# 5. Saving results file ---
 #
 ###########################################################################
 
