@@ -1,6 +1,7 @@
 ##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
 # This script contains the function needed to project the meerkat population dynamics under scenarios
 # of higher or lower seasonality in vital rates. 
@@ -35,9 +36,9 @@ load.librairies()
 ## 1.3. Loading data ----
 # ------------------
 
-source("RScripts_ForSubmission/02_Meerkats_MPMs.R")
+source("02_Meerkats_MPMs.R")
 
-data.meerkats = read.csv("RScripts_ForSubmission/MeerkatsData.csv")
+data.meerkats = read.csv("MeerkatsData.csv")
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 meerkats.vr = read.csv("Meerkats_VitalRatesEstimates.csv")
@@ -49,7 +50,7 @@ load("GLMM_poprange.RData")
 
 ###########################################################################
 #
-# 2. Projection function
+# 2. Projection function ----
 #
 ###########################################################################
 
@@ -1081,7 +1082,7 @@ lines(apply(low.seas.d.recruit.opt.dens[[1]], 2, mean, na.rm = T), lwd = 2)
 
 ###########################################################################
 #
-# 4. Saving files and data
+# 4. Saving files and data ----
 #
 ###########################################################################
 

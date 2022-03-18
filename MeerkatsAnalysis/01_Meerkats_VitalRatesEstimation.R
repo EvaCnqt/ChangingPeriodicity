@@ -1,13 +1,16 @@
-############################################################################
+##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
-# This script uses the capture-recapture data of a meerkat population in the Kalahari desert, collected between 1998 and 2016. 
-# The aim of this script is to model the survival, transitions, emigration, and recruitment of four life-history stages: juvenile, subadult, helper, and dominant. We model as well the population range. 
+# This script uses the capture-recapture data of a meerkat population in the Kalahari desert, 
+# collected between 1998 and 2016. 
+# The aim of this script is to model the survival, transitions, emigration, and recruitment of four 
+# life-history stages: juvenile, subadult, helper, and dominant. We model as well the population range. 
 #
 # Author: Eva Conquet
 #
-###########################################################################
+##########################################################################################################
 
 
 ###########################################################################
@@ -130,8 +133,8 @@ dominants = data.meerkats[data.meerkats$stage == "D", ]
 
 ###########################################################################
 #
-# 2. Fitting Generalized Linear Mixed Models (GLMMs) 
-# to estimate the vital rates ----
+# 2. Fitting Generalized Linear Mixed Models (GLMMs)  ----
+# to estimate the vital rates
 #
 ###########################################################################
 
@@ -967,56 +970,6 @@ recruitment.H.new.data$pred = NA
 
 # 95% confidence intervals: We cannot use the bootstrap here because the model is a glmmPQL. We thus use the easyPredCI function from Prof. Marc Girondot (https://biostatsr.blogspot.com/2016/02/predict-for-glm-and-glmm.html). 
 
-easyPredCI <- function(model, newdata=NULL, alpha=0.05) {
-  # Marc Girondot - 2016-01-09
-  if (is.null(newdata)) {
-    if (any(class(model)=="glmerMod")) newdata <- model@frame
-    if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) newdata <- model$data
-    if (any(class(model)=="glmmadmb")) newdata <- model$frame
-  }
-  
-  ## baseline prediction, on the linear predictor scale:
-  pred0 <- predict(model, re.form=NA, newdata=newdata)
-  ## fixed-effects model matrix for new data
-  if (any(class(model)=="glmmadmb")) {
-    X <- model.matrix(delete.response(model$terms), newdata)
-  } else {
-    X <- model.matrix(formula(model,fixed.only=TRUE)[-2],
-                      newdata)
-  }
-  
-  if (any(class(model)=="glm")) {
-    # Marc Girondot - 2016-01-09
-    # Note that beta is not used
-    beta <- model$coefficients
-  } else {
-    beta <- fixef(model) ## fixed-effects coefficients
-  }
-  
-  V <- vcov(model)     ## variance-covariance matrix of beta
-  
-  # Marc Girondot - 2016-01-09
-  if (any(!(colnames(V) %in% colnames(X)))) {
-    dfi <- matrix(data = rep(0, dim(X)[1]*sum(!(colnames(V) %in% colnames(X)))), nrow = dim(X)[1])
-    colnames(dfi) <- colnames(V)[!(colnames(V) %in% colnames(X))]
-    X <- cbind(X, dfi)
-  }
-  
-  pred.se <- sqrt(diag(X %*% V %*% t(X))) ## std errors of predictions
-  
-  ## inverse-link function
-  # Marc Girondot - 2016-01-09
-  if (any(class(model)=="glmmPQL") | any(class(model)=="glm")) linkinv <- model$family$linkinv
-  if (any(class(model)=="glmerMod")) linkinv <- model@resp$family$linkinv
-  if (any(class(model)=="glmmadmb")) linkinv <- model$ilinkfun
-  
-  ## construct 95% Normal CIs on the link scale and
-  ##  transform back to the response (probability) scale:
-  crit <- -qnorm(alpha/2)
-  linkinv(cbind(lwr=pred0-crit*pred.se,
-                upr=pred0+crit*pred.se))
-}
-
 recruitment.H.new.data$lwr[which(recruitment.H.new.data$season == "rain")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "rain"), ], 1, FUN = function(x) easyPredCI(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[1, 1])
 recruitment.H.new.data$lwr[which(recruitment.H.new.data$season == "dry")] = apply(recruitment.H.new.data[which(recruitment.H.new.data$season == "dry"), ], 1, FUN = function(x) easyPredCI(recruitment.H, newdata = data.frame(year = as.numeric(x[1]), season = c("rain", "dry"), density = as.numeric(x[3])))[2, 1])
 
@@ -1546,7 +1499,7 @@ vr.per.year$emig.wet = emig.per.year.wet
 
 ###########################################################################
 #
-# 4. Saving files and data
+# 4. Saving files and data ----
 #
 ###########################################################################
 

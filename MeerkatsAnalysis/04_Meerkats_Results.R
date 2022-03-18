@@ -1,6 +1,7 @@
 ##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
 # This script contains the code to obtain the result plots for the meerkat analysis. 
 #
@@ -173,7 +174,7 @@ dev.off()
 
 ###########################################################################
 #
-# 4. Saving files and data
+# 4. Saving files and data ----
 #
 ###########################################################################
 
