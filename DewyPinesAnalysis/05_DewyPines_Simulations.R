@@ -1,9 +1,11 @@
 ##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
 # This script contains the function needed to project the dewy pine population dynamics with or
-# without perturbed vital rates in each post-fire habitat state (time since fire, TSF). 
+# without perturbed vital rates in each post-fire habitat state (time since fire, TSF) and under
+# each fire regime: stochastic or periodic fires occurring every 15 or 30 years. 
 #
 # Author: Eva Conquet
 #
@@ -59,12 +61,13 @@ nbsquares.siteF.TSF3 = nbsquares$nbsquares[nbsquares$site == "siteF" & nbsquares
 ###########################################################################
 
 stoch.sim.droso <- function(nsimul = 500, 
-              nyears = 100, 
-              n0, 
-              fire.prob = 0.033, 
-              perturbed.state = 0, 
-              density = T, 
-              state5.perturbed.years.prop = NA){
+                            nyears = 100, 
+                            n0, 
+                            disturbance.type = "stochastic",
+                            fire.prob = 1/30,
+                            fire.freq = 15,
+                            perturbed.state = 0, 
+                            density = T){
  
  # (1) Control case = Simulating what happens in the normal conditions: We use the populations in the fire-disturbed sites E and F as natural populations. Each year, we randomly pick an MPM between site E and F.
  # (2) Perturbed periodicity case = Perturbing the periodicity in post-fire habitats in each post-fire state independently through inclusion of human-disturbance conditions, while keeping fire-return probability to 0.033 (one fire every 30 years). To do so, we use the given state matrix of the human-disturbed site C.
@@ -72,19 +75,23 @@ stoch.sim.droso <- function(nsimul = 500,
  # Preparing arrays, vectors, and lists to record lambdas, extinction, density, population vectors, and post-fire habitat states
  
  log.lambda = array(NA, c(nsimul, nyears))
- ext = seq(0, 0, length.out = nsimul)
+ ext = rep(0, nsimul)
+ ext.year = rep(0, nsimul)
  dens = array(NA, c(nsimul, nyears))
  pop.vec = list()
  
  post.fire.habitat = list()
  
  # Building the Markov chain to create the succession of post-fire environmental states
- p = fire.prob
+ 
+ # If we include fire disturbance, we use fire.prob as fire probability to go back to state 1. Otherwise, the population stays in state 5 until the next perturbation.
+ p = ifelse(disturbance.type == "stochastic", 1 - fire.prob, 1)
+
  envS = matrix(0, 5, 5)
  
  envS[2, 1] = envS[3, 2] = envS[4, 3] = envS[5, 4] = 1
- envS[1, 5] = p
- envS[5, 5] = 1 - p
+ envS[1, 5] = 1 - p
+ envS[5, 5] = p
  
  colnames(envS) = rownames(envS) = 1:5
  
@@ -102,18 +109,28 @@ stoch.sim.droso <- function(nsimul = 500,
   # Building the post-fire environmental states succession vector
   states = numeric(nyears)
   env.at.t = 1
-  states[1] = 1
   
-  for(x in 2:nyears){
-   states[x] = env.at.t = sample(ncol(envS), 1, pr = envS[, env.at.t])
+  # If we assume periodic fires, going back to state 1 is defined by the frequency of that disturbance. Otherwise only the first state is defined as 1, the rest depends on the fire-return probability
+  if(disturbance.type == "stochastic"){
+    
+    states[1] = 1
+    
+    for(x in 2:nyears){
+      states[x] = env.at.t = sample(ncol(envS), 1, pr = envS[, env.at.t])
+    }
+  }
+  
+  else if(disturbance.type == "periodic"){
+    
+    states[seq(1, nyears, fire.freq)] = 1
+    states[which(states == 1) + 1] = 2
+    states[which(states == 1) + 2] = 3
+    states[which(states == 1) + 3] = 4
+    states[which(states == 0)] = 5
+    
   }
   
   post.fire.habitat[[i]] = states
-  
-  # Computing the number of years to be perturbed in state 5
-  
-  nb.perturbed.years = round(unlist(lapply(split(states[states != 1], cumsum(states == 1)[states != 1]), FUN = function(x) length(which(x == 5))), use.names = F) * state5.perturbed.years.prop, 0)
-  
   
   # Preparing lists to record yearly population vector for each simulation
   pop.vec.sim = list()
@@ -201,11 +218,11 @@ stoch.sim.droso <- function(nsimul = 500,
     if(any(perturbed.state == 2)){
      
      # Use the MPM of the human-perturbed site C in state 2
-     if(density == T){ # For density-dependent simulation, use the updated abundance
+     if(density == T){ # For density-dependent simulation, use the updated density
       pop.mat = dewy.buildmat.TSF1.siteC(dens1)
      }
      
-     else if(density == F){ # For average abundance simulation, use the average abundance in site C, TSF1
+     else if(density == F){ # For average density simulation, use the average density in site C, TSF1
       
       dens1 = mean.densities$mean.density[mean.densities$site == "siteC" & mean.densities$TSF == "one"]
       pop.mat = dewy.buildmat.TSF1.siteC(dens1)
@@ -220,11 +237,11 @@ stoch.sim.droso <- function(nsimul = 500,
      # Use an undisturbed MPM between the undisturbed sites E and F (fire-disturbed, natural populations)
      if(random.mat == 1){
       
-      if(density == T){ # For density-dependent simulation, use the updated abundance
+      if(density == T){ # For density-dependent simulation, use the updated density
        pop.mat = dewy.buildmat.TSF1.siteE(dens1)
       }
       
-      else if(density == F){# For average abundance simulation, use the average abundance in site E, TSF1
+      else if(density == F){# For average density simulation, use the average density in site E, TSF1
        
        dens1 = mean.densities$mean.density[mean.densities$site == "siteE" & mean.densities$TSF == "one"]
        pop.mat = dewy.buildmat.TSF1.siteE(dens1)
@@ -233,11 +250,11 @@ stoch.sim.droso <- function(nsimul = 500,
      
      else if(random.mat == 2){
       
-      if(density == T){ # For density-dependent simulation, use the updated abundance
+      if(density == T){ # For density-dependent simulation, use the updated density
        pop.mat = dewy.buildmat.TSF1.siteF(dens1)
       }
       
-      else if(density == F){ # For average abundance simulation, use the average abundance in site F, TSF1
+      else if(density == F){ # For average density simulation, use the average density in site F, TSF1
        
        dens1 = mean.densities$mean.density[mean.densities$site == "siteF" & mean.densities$TSF == "one"]
        pop.mat = dewy.buildmat.TSF1.siteF(dens1)
@@ -282,12 +299,12 @@ stoch.sim.droso <- function(nsimul = 500,
     if(any(perturbed.state == 3)){
      
      # Use the MPM of the human-perturbed site C in state 3
-     if(density == T){ # For density-dependent simulation, use the updated abundance
+     if(density == T){ # For density-dependent simulation, use the updated density
  
       pop.mat = dewy.buildmat.TSF2.siteC(dens1)
      }
      
-     else if(density == F){ # For average abundance simulation, use the average abundance in site C, TSF2
+     else if(density == F){ # For average density simulation, use the average density in site C, TSF2
       
       dens1 = mean.densities$mean.density[mean.densities$site == "siteC" & mean.densities$TSF == "two"]
       pop.mat = dewy.buildmat.TSF2.siteC(dens1)
@@ -302,11 +319,11 @@ stoch.sim.droso <- function(nsimul = 500,
      # Use an undisturbed MPM between the undisturbed sites E and F (fire-disturbed, natural populations)
      if(random.mat == 1){
       
-      if(density == T){ # For density-dependent simulation, use the updated abundance
+      if(density == T){ # For density-dependent simulation, use the updated density
        pop.mat = dewy.buildmat.TSF2.siteE(dens1)
       }
       
-      else if(density == F){ # For average abundance simulation, use the average abundance in site E, TSF2
+      else if(density == F){ # For average density simulation, use the average density in site E, TSF2
        
        dens1 = mean.densities$mean.density[mean.densities$site == "siteE" & mean.densities$TSF == "two"]
        pop.mat = dewy.buildmat.TSF2.siteE(dens1)
@@ -358,12 +375,12 @@ stoch.sim.droso <- function(nsimul = 500,
     if(any(perturbed.state == 4)){
      
      # Use the MPM of the human-perturbed site C in state 4
-     if(density == T){ # For density-dependent simulation, use the updated abundance
+     if(density == T){ # For density-dependent simulation, use the updated density
       
       pop.mat = dewy.buildmat.TSF3.siteC(dens1)
      }
      
-     else if(density == F){ # For average abundance simulation, use the average abundance in site C, TSF3
+     else if(density == F){ # For average density simulation, use the average density in site C, TSF3
       
       dens1 = mean.densities$mean.density[mean.densities$site == "siteC" & mean.densities$TSF == "three"]
       pop.mat = dewy.buildmat.TSF3.siteC(dens1)
@@ -377,11 +394,11 @@ stoch.sim.droso <- function(nsimul = 500,
      # Use an undisturbed MPM between the undisturbed sites E and F (fire-disturbed, natural populations)
      if(random.mat == 1){
       
-      if(density == T){ # For density-dependent simulation, use the updated abundance
+      if(density == T){ # For density-dependent simulation, use the updated density
        pop.mat = dewy.buildmat.TSF3.siteE(dens1)
       }
       
-      else if(density == F){ # For average abundance simulation, use the average abundance in site E, TSF>2
+      else if(density == F){ # For average density simulation, use the average density in site E, TSF>2
        
        dens1 = mean.densities$mean.density[mean.densities$site == "siteE" & mean.densities$TSF == "three"]
        pop.mat = dewy.buildmat.TSF3.siteE(dens1)
@@ -390,12 +407,12 @@ stoch.sim.droso <- function(nsimul = 500,
      
      else if(random.mat == 2){
       
-      if(density == T){ # For density-dependent simulation, use the updated abundance
+      if(density == T){ # For density-dependent simulation, use the updated density
        
        pop.mat = dewy.buildmat.TSF3.siteF(dens1)
       }
       
-      else if(density == F){ # For average abundance simulation, use the average abundance in site E, TSF>2
+      else if(density == F){ # For average density simulation, use the average density in site E, TSF>2
        
        dens1 = mean.densities$mean.density[mean.densities$site == "siteF" & mean.densities$TSF == "three"]
        pop.mat = dewy.buildmat.TSF3.siteF(dens1)
@@ -446,69 +463,16 @@ stoch.sim.droso <- function(nsimul = 500,
     
     if(any(perturbed.state == 5)){
      
-     if(is.na(state5.perturbed.years.prop)){
-      
-      if(density == T){ # For density-dependent simulation, use the updated abundance
+      if(density == T){ # For density-dependent simulation, use the updated density
        
-       pop.mat = dewy.buildmat.stochastic.siteC(dens1, year)
-      }
-      
-      else if(density == F){ # For average abundance simulation, use the average abundance in site C, TSF>3
-       
-       dens1 = mean.densities$mean.density[mean.densities$site == "siteC" & mean.densities$TSF == "three"]
-       pop.mat = dewy.buildmat.stochastic.siteC(dens1, year)
-      }
-     }
-     
-     else{
-      
-      if(states[j - 1] != 5){ # The first time the population enters state 5 since the last fire.
-       
-       nb.years.in.state5 = 1 # Keeping track of the number of years spent in state 5 since the last fire, to be able to stop the perturbation when reaching the right year.
-       
-       nb.ptbd.yrs = nb.perturbed.years[nb.fires] # Getting the number of years to perturb. 
-      }
-      
-      else{nb.years.in.state5 = nb.years.in.state5 + 1}
-      
-      if(nb.years.in.state5 <= nb.ptbd.yrs){ # If the year we are in is below the number of years to perturb, we use the MPM of the human-perturbed site C.
-       
-       # Use the MPM of the human-perturbed site C in state 5
-       if(density == T){ # For density-dependent simulation, use the updated abundance
-        
         pop.mat = dewy.buildmat.stochastic.siteC(dens1, year)
-       }
+      }
+      
+      else if(density == F){ # For average density simulation, use the average density in site C, TSF>3
        
-       else if(density == F){ # For average abundance simulation, use the average abundance in site C, TSF>3
-        
         dens1 = mean.densities$mean.density[mean.densities$site == "siteC" & mean.densities$TSF == "three"]
         pop.mat = dewy.buildmat.stochastic.siteC(dens1, year)
-       }
       }
-      
-      else{ # If the year we are in is above the number of years to perturb, we use the undisturbed MPM for sites E and F.
-       
-       if(density == T){ # For density-dependent simulation, use the updated abundance
-        
-        pop.mat = dewy.buildmat.stochastic.sitesEF(dens1, year)
-       }
-       
-       else if(density == F){ # For average abundance simulation, use the average abundance in site E or F, TSF>3
-        
-        if(random.mat == 1){
-         
-         dens1 = mean.densities$mean.density[mean.densities$site == "siteE" & mean.densities$TSF == "three"]
-         pop.mat = dewy.buildmat.stochastic.sitesEF(dens1, year)
-        }
-        
-        else if(random.mat == 2){
-         
-         dens1 = mean.densities$mean.density[mean.densities$site == "siteF" & mean.densities$TSF == "three"]
-         pop.mat = dewy.buildmat.stochastic.sitesEF(dens1, year)
-        }
-       }
-      }
-     }
     } 
     
     
@@ -516,12 +480,12 @@ stoch.sim.droso <- function(nsimul = 500,
     
     else{
      
-     if(density == T){ # For density-dependent simulation, use the updated abundance
+     if(density == T){ # For density-dependent simulation, use the updated density
       
       pop.mat = dewy.buildmat.stochastic.sitesEF(dens1, year)
      }
      
-     else if(density == F){ # For average abundance simulation, use the average abundance in site E or F, TSF>2
+     else if(density == F){ # For average density simulation, use the average density in site E or F, TSF>2
       
       if(random.mat == 1){
        
@@ -574,6 +538,7 @@ stoch.sim.droso <- function(nsimul = 500,
    if(sum(n1[-1]) < 5 & n1[1] < 50){
     
     ext[i] = 1
+    ext.year[i] = j
     break
    }
   }
@@ -581,7 +546,7 @@ stoch.sim.droso <- function(nsimul = 500,
   pop.vec[[i]] = pop.vec.sim 
   
  }
- return(list(log.lambda, dens, ext, pop.vec, post.fire.habitat))
+ return(list(log.lambda, dens, ext, ext.year, pop.vec, post.fire.habitat))
 }
 
 
@@ -608,720 +573,1472 @@ n0 = c(1000, 0, 0, 0, 0)
 ## 3.1. Tests ----
 # -----------
 
-## (0) Control test
+## 3.1.1. Control test - Stochastic fires ----
+# --------------------------------
 
-test.sim0 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033)
+test.sim0 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30)
 
 # Densities
 matplot(t(test.sim0[[2]]), type = "l", col = rainbow(nrow(test.sim0[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
 lines(apply(test.sim0[[2]], 2, mean, na.rm = T), lwd = 2)
-test.sim0.avgab = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, density = F)
+
+test.sim0.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, density = F)
 
 
-## (1) State 1 perturbed test
+## 3.1.2. State 5 perturbed test - Stochastic fires ----
+# -------------------------------------
 
-test.sim1 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 1)
+test.sim1 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = 5)
 
 # Densities
-
 matplot(t(test.sim1[[2]]), type = "l", col = rainbow(nrow(test.sim1[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
 lines(apply(test.sim1[[2]], 2, mean, na.rm = T), lwd = 2)
-test.sim1.avgab = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 1, density = F)
+
+test.sim1.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = 5, density = F)
 
 
-## (2) State 2 perturbed test
+## 3.1.3. States 4+5 perturbed test - Stochastic fires ----
+# ----------------------------------------
 
-test.sim2 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 2)
+test.sim2 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(4, 5))
 
 # Densities
-
 matplot(t(test.sim2[[2]]), type = "l", col = rainbow(nrow(test.sim2[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
 lines(apply(test.sim2[[2]], 2, mean, na.rm = T), lwd = 2)
-test.sim2.avgab = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 2, density = F)
+
+test.sim2.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(4, 5), density = F)
 
 
-## (3) State 3 perturbed test
+## 3.1.4. States 3+4+5 perturbed test - Stochastic fires ----
+# ------------------------------------------
 
-test.sim3 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 3)
+test.sim3 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(3, 4, 5))
 
 # Densities
-
 matplot(t(test.sim3[[2]]), type = "l", col = rainbow(nrow(test.sim3[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
 lines(apply(test.sim3[[2]], 2, mean, na.rm = T), lwd = 2)
-test.sim3.avgab = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 3, density = F)
+
+test.sim3.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(3, 4, 5), density = F)
 
 
-## (4) State 4 perturbed test
+## 3.1.5. States 2+3+4+5 perturbed test - Stochastic fires ----
+# --------------------------------------------
 
-test.sim4 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 4)
+test.sim4 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(2, 3, 4, 5))
 
 # Densities
-
 matplot(t(test.sim4[[2]]), type = "l", col = rainbow(nrow(test.sim4[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
 lines(apply(test.sim4[[2]], 2, mean, na.rm = T), lwd = 2)
-test.sim4.avgab = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 4, density = F)
+
+test.sim4.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(2, 3, 4, 5), density = F)
 
 
-# (5) State 5 perturbed test
+## 3.1.6. States 1+2+3+4+5 perturbed test - Stochastic fires ----
+# ----------------------------------------------
 
-test.sim5 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 5)
+test.sim5 = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(1, 2, 3, 4, 5))
 
 # Densities
-
 matplot(t(test.sim5[[2]]), type = "l", col = rainbow(nrow(test.sim5[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
 lines(apply(test.sim5[[2]], 2, mean, na.rm = T), lwd = 2)
-test.sim5.avgab = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F)
+
+test.sim5.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(1, 2, 3, 4, 5), density = F)
 
 
-# (6-10) State 5 perturbed proportion test
 
-test.sim6 = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.1)
+## 3.1.1. Control test - Periodic fires ----
+# -----------------------------------------
 
-# Densities
-
-matplot(t(test.sim6[[2]]), type = "l", col = rainbow(nrow(test.sim6[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
-lines(apply(test.sim6[[2]], 2, mean, na.rm = T), lwd = 2)
-
-test.sim6.avgab = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F, state5.perturbed.years.prop = 0.1)
-
-test.sim7 = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.3)
+test.sim0.periodicFire = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15)
 
 # Densities
+matplot(t(test.sim0.periodicFire[[2]]), type = "l", col = rainbow(nrow(test.sim0.periodicFire[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
+lines(apply(test.sim0.periodicFire[[2]], 2, mean, na.rm = T), lwd = 2)
 
-matplot(t(test.sim7[[2]]), type = "l", col = rainbow(nrow(test.sim7[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
-lines(apply(test.sim7[[2]], 2, mean, na.rm = T), lwd = 2)
+test.sim0.periodicFire.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, density = F)
 
-test.sim7.avgab = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F, state5.perturbed.years.prop = 0.3)
 
-test.sim8 = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.5)
+## 3.1.2. State 5 perturbed test - Periodic fires ----
+# ---------------------------------------------------
 
-# Densities
-
-matplot(t(test.sim8[[2]]), type = "l", col = rainbow(nrow(test.sim8[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
-lines(apply(test.sim8[[2]], 2, mean, na.rm = T), lwd = 2)
-
-test.sim8.avgab = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F, state5.perturbed.years.prop = 0.5)
-
-test.sim9 = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.7)
+test.sim1.periodicFire = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = 5)
 
 # Densities
+matplot(t(test.sim1.periodicFire[[2]]), type = "l", col = rainbow(nrow(test.sim1.periodicFire[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
+lines(apply(test.sim1.periodicFire[[2]], 2, mean, na.rm = T), lwd = 2)
 
-matplot(t(test.sim9[[2]]), type = "l", col = rainbow(nrow(test.sim9[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
-lines(apply(test.sim9[[2]], 2, mean, na.rm = T), lwd = 2)
+test.sim1.periodicFire.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = 5, density = F)
 
-test.sim9.avgab = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F, state5.perturbed.years.prop = 0.7)
 
-test.sim10 = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.9)
+## 3.1.3. States 4+5 perturbed test - Periodic fires ----
+# ------------------------------------------------------
+
+test.sim2.periodicFire = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(4, 5))
 
 # Densities
+matplot(t(test.sim2.periodicFire[[2]]), type = "l", col = rainbow(nrow(test.sim2.periodicFire[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
+lines(apply(test.sim2.periodicFire[[2]], 2, mean, na.rm = T), lwd = 2)
 
-matplot(t(test.sim10[[2]]), type = "l", col = rainbow(nrow(test.sim10[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
-lines(apply(test.sim10[[2]], 2, mean, na.rm = T), lwd = 2)
-
-test.sim10.avgab = stoch.sim.droso(nsimul = 10, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F, state5.perturbed.years.prop = 0.9)
-
+test.sim2.periodicFire.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(4, 5), density = F)
 
 
-## 3.2. With density dependence ----
-# -----------------------------
+## 3.1.4. States 3+4+5 perturbed test - Periodic fires ----
+# --------------------------------------------------------
+
+test.sim3.periodicFire = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(3, 4, 5))
+
+# Densities
+matplot(t(test.sim3.periodicFire[[2]]), type = "l", col = rainbow(nrow(test.sim3.periodicFire[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
+lines(apply(test.sim3.periodicFire[[2]], 2, mean, na.rm = T), lwd = 2)
+
+test.sim3.periodicFire.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(3, 4, 5), density = F)
+
+
+## 3.1.5. States 2+3+4+5 perturbed test - Periodic fires ----
+# ----------------------------------------------------------
+
+test.sim4.periodicFire = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(2, 3, 4, 5))
+
+# Densities
+matplot(t(test.sim4.periodicFire[[2]]), type = "l", col = rainbow(nrow(test.sim4.periodicFire[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
+lines(apply(test.sim4.periodicFire[[2]], 2, mean, na.rm = T), lwd = 2)
+
+test.sim4.periodicFire.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(2, 3, 4, 5), density = F)
+
+
+## 3.1.6. States 1+2+3+4+5 perturbed test - Periodic fires ----
+# ------------------------------------------------------------
+
+test.sim5.periodicFire = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(1, 2, 3, 4, 5))
+
+# Densities
+matplot(t(test.sim5.periodicFire[[2]]), type = "l", col = rainbow(nrow(test.sim5.periodicFire[[2]])), main = "Density over yearly time steps", xlab = "Time steps (years)", ylab = "Density")
+lines(apply(test.sim5.periodicFire[[2]], 2, mean, na.rm = T), lwd = 2)
+
+test.sim5.periodicFire.avgdens = stoch.sim.droso(nsimul = 10, nyears = 10, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(1, 2, 3, 4, 5), density = F)
+
+
+
+## 3.2. With density dependence and stochastic fire disturbance (p = 1/30) ----
+# ------------------------------------------------------------------------
 
 ## 3.2.1. Unperturbed periodicity - Control case
 # ----------------------------------------------
 
-print("CONTROL (UNPERTURBED PERIODICITY) - p = 0.033")
-control.sim = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033)
+print("CONTROL (UNPERTURBED PERIODICITY) - p = 1/30")
+stochasticFire30.control.sim = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30)
 
 # Simulation-wise stochastic lambdas
-control.sim.lambda = apply(control.sim[[1]], 1, mean, na.rm = T)
+stochasticFire30.control.sim.lambda = apply(stochasticFire30.control.sim[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-control.stoch.lambda = mean(control.sim.lambda)
+stochasticFire30.control.stoch.lambda = mean(stochasticFire30.control.sim.lambda)
 
 # Variance in log lambda across years
-control.var.lambda = apply(control.sim[[1]], 1, var, na.rm = T)
+stochasticFire30.control.var.lambda = apply(stochasticFire30.control.sim[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-control.ext.prob = mean(control.sim[[3]])
+stochasticFire30.control.ext.prob = mean(stochasticFire30.control.sim[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(control.sim[[1]]), type = "l", col = rainbow(nrow(control.sim[[1]])), main = "Simulations yearly log lambda - Control scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(control.sim[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.control.sim[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.control.sim[[1]])), main = "Simulations yearly log lambda - Control scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.control.sim[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(control.sim[[2]]), type = "l", col = rainbow(nrow(control.sim[[2]])), main = "Density over seasonal time steps - Control scenario", xlab = "Time steps (years)", ylab = "Density") # Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(control.sim[[2]], 2, mean), lwd = 2) # Average density accross simulations for each time step
+matplot(t(stochasticFire30.control.sim[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.control.sim[[2]])), main = "Density over seasonal time steps - Control scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Density") # Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.control.sim[[2]], 2, mean, na.rm = T), lwd = 2) # Average density accross simulations for each time step
 
 
-## 3.2.2. Perturbed state = 1 (TSF0) ----
+## 3.2.2. Perturbed state = 5 (TSF>3) ----
 # ----------------------------------
 
-print("PERTURBED STAGE 1 - p = 0.033")
-perturb.state1 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 1)
+print("PERTURBED STATE 5 - p = 1/30")
+stochasticFire30.perturb.state5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = 5)
 
 # Simulation-wise stochastic lambdas
-perturb.state1.sim.lambda = apply(perturb.state1[[1]], 1, mean, na.rm = T)
+stochasticFire30.perturb.state5.sim.lambda = apply(stochasticFire30.perturb.state5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state1.stoch.lambda = mean(perturb.state1.sim.lambda)
+stochasticFire30.perturb.state5.stoch.lambda = mean(stochasticFire30.perturb.state5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state1.var.lambda = apply(perturb.state1[[1]], 1, var, na.rm = T)
+stochasticFire30.perturb.state5.var.lambda = apply(stochasticFire30.perturb.state5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state1.ext.prob = mean(perturb.state1[[3]])
+stochasticFire30.perturb.state5.ext.prob = mean(stochasticFire30.perturb.state5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state1[[1]]), type = "l", col = rainbow(nrow(perturb.state1[[1]])), main = "Simulations yearly log lambda - perturb.state1 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state1[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.perturb.state5[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state5[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state1[[2]]), type = "l", col = rainbow(nrow(perturb.state1[[2]])), main = "Density over seasonal time steps - perturb.state1 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state1[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire30.perturb.state5[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state5[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.2.3. Perturbed state = 2 (TSF1) ----
-# ----------------------------------
+## 3.2.3. Perturbed state = 4 + 5 (TSF3 and TSF>3) ----
+# ------------------------------------------------
 
-print("PERTURBED STAGE 2 - p = 0.033")
-perturb.state2 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 2)
+print("PERTURBED STATES 4 + 5 - p = 1/30")
+stochasticFire30.perturb.state4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state2.sim.lambda = apply(perturb.state2[[1]], 1, mean, na.rm = T)
+stochasticFire30.perturb.state4_5.sim.lambda = apply(stochasticFire30.perturb.state4_5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state2.stoch.lambda = mean(perturb.state2.sim.lambda)
+stochasticFire30.perturb.state4_5.stoch.lambda = mean(stochasticFire30.perturb.state4_5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state2.var.lambda = apply(perturb.state2[[1]], 1, var, na.rm = T)
+stochasticFire30.perturb.state4_5.var.lambda = apply(stochasticFire30.perturb.state4_5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state2.ext.prob = mean(perturb.state2[[3]])
+stochasticFire30.perturb.state4_5.ext.prob = mean(stochasticFire30.perturb.state4_5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state2[[1]]), type = "l", col = rainbow(nrow(perturb.state2[[1]])), main = "Simulations yearly log lambda - perturb.state2 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state2[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.perturb.state4_5[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state4_5[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state4_5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state2[[2]]), type = "l", col = rainbow(nrow(perturb.state2[[2]])), main = "Density over seasonal time steps - perturb.state2 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state2[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire30.perturb.state4_5[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state4_5[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.2.4. Perturbed state = 3 (TSF2) ----
-# ----------------------------------
+## 3.2.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
 
-print("PERTURBED STAGE 3 - p = 0.033")
-perturb.state3 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 3)
+print("PERTURBED STATES 3 + 4 + 5 - p = 1/30")
+stochasticFire30.perturb.state3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(3, 4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state3.sim.lambda = apply(perturb.state3[[1]], 1, mean, na.rm = T)
+stochasticFire30.perturb.state3_4_5.sim.lambda = apply(stochasticFire30.perturb.state3_4_5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state3.stoch.lambda = mean(perturb.state3.sim.lambda)
+stochasticFire30.perturb.state3_4_5.stoch.lambda = mean(stochasticFire30.perturb.state3_4_5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state3.var.lambda = apply(perturb.state3[[1]], 1, var, na.rm = T)
+stochasticFire30.perturb.state3_4_5.var.lambda = apply(stochasticFire30.perturb.state3_4_5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state3.ext.prob = mean(perturb.state3[[3]])
+stochasticFire30.perturb.state3_4_5.ext.prob = mean(stochasticFire30.perturb.state3_4_5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state3[[1]]), type = "l", col = rainbow(nrow(perturb.state3[[1]])), main = "Simulations yearly log lambda - perturb.state3 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state3[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.perturb.state3_4_5[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state3_4_5[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state3[[2]]), type = "l", col = rainbow(nrow(perturb.state3[[2]])), main = "Density over seasonal time steps - perturb.state3 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state3[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire30.perturb.state3_4_5[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state3_4_5[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.2.5. Perturbed state = 4 (TSF3) ----
-# ----------------------------------
+## 3.2.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
 
-print("PERTURBED STAGE 4 - p = 0.033")
-perturb.state4 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 4)
+print("PERTURBED STATES 2 + 3 + 4 + 5 - p = 1/30")
+stochasticFire30.perturb.state2_3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(2, 3, 4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state4.sim.lambda = apply(perturb.state4[[1]], 1, mean, na.rm = T)
+stochasticFire30.perturb.state2_3_4_5.sim.lambda = apply(stochasticFire30.perturb.state2_3_4_5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state4.stoch.lambda = mean(perturb.state4.sim.lambda)
+stochasticFire30.perturb.state2_3_4_5.stoch.lambda = mean(stochasticFire30.perturb.state2_3_4_5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state4.var.lambda = apply(perturb.state4[[1]], 1, var, na.rm = T)
+stochasticFire30.perturb.state2_3_4_5.var.lambda = apply(stochasticFire30.perturb.state2_3_4_5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state4.ext.prob = mean(perturb.state4[[3]])
+stochasticFire30.perturb.state2_3_4_5.ext.prob = mean(stochasticFire30.perturb.state2_3_4_5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state4[[1]]), type = "l", col = rainbow(nrow(perturb.state4[[1]])), main = "Simulations yearly log lambda - perturb.state4 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state4[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.perturb.state2_3_4_5[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state2_3_4_5[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state2_3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state4[[2]]), type = "l", col = rainbow(nrow(perturb.state4[[2]])), main = "Density over seasonal time steps - perturb.state4 scenario ", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state4[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire30.perturb.state2_3_4_5[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state2_3_4_5[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state2_3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.2.6. Perturbed state = 5 (TSF>3) ----
-# -----------------------------------
+## 3.2.6. Perturbed states =  all ----
+# -------------------------------
 
-print("PERTURBED STAGE 5 - p = 0.033")
-perturb.state5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5)
+print("PERTURBED STATES ALL - p = 1/30")
+stochasticFire30.perturb.stateAll = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(1, 2, 3, 4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state5.sim.lambda = apply(perturb.state5[[1]], 1, mean, na.rm = T)
+stochasticFire30.perturb.stateAll.sim.lambda = apply(stochasticFire30.perturb.stateAll[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.stoch.lambda = mean(perturb.state5.sim.lambda)
+stochasticFire30.perturb.stateAll.stoch.lambda = mean(stochasticFire30.perturb.stateAll.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.var.lambda = apply(perturb.state5[[1]], 1, var, na.rm = T)
+stochasticFire30.perturb.stateAll.var.lambda = apply(stochasticFire30.perturb.stateAll[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.ext.prob = mean(perturb.state5[[3]])
+stochasticFire30.perturb.stateAll.ext.prob = mean(stochasticFire30.perturb.stateAll[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5[[1]]), type = "l", col = rainbow(nrow(perturb.state5[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.perturb.stateAll[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.stateAll[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.stateAll[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5[[2]]), type = "l", col = rainbow(nrow(perturb.state5[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire30.perturb.stateAll[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.stateAll[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (stochastic fire, p = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.stateAll[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.2.7. Proportion of the years perturbed in state 5 = 0.1 ----
-# ----------------------------------------------------------
+## 3.3. With density dependence and periodic fire disturbance (f = 1/15) ----
+# ----------------------------------------------------------------------
 
-print("PERTURBED STAGE 5 - prop = 0.1")
-perturb.state5.proportion.10 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.1)
-
-# Simulation-wise stochastic lambdas
-perturb.state5.proportion.10.sim.lambda = apply(perturb.state5.proportion.10[[1]], 1, mean, na.rm = T)
-
-# Mean stochastic lambda
-perturb.state5.proportion.10.stoch.lambda = mean(perturb.state5.proportion.10.sim.lambda)
-
-# Variance in log lambda across years
-perturb.state5.proportion.10.var.lambda = apply(perturb.state5.proportion.10[[1]], 1, var, na.rm = T)
-
-# Mean extinction probability
-perturb.state5.proportion.10.ext.prob = mean(perturb.state5.proportion.10[[3]])
-
-# Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.proportion.10[[1]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.10[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.proportion.10[[1]], 2, mean, na.rm = T), lwd = 2)
-
-# Density plots
-matplot(t(perturb.state5.proportion.10[[2]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.10[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.proportion.10[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
-
-
-## 3.2.8. Proportion of the years perturbed in state 5 = 0.3 ----
-# ----------------------------------------------------------
-
-print("PERTURBED STAGE 5 - prop = 0.3")
-perturb.state5.proportion.30 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.3)
-
-# Simulation-wise stochastic lambdas
-perturb.state5.proportion.30.sim.lambda = apply(perturb.state5.proportion.30[[1]], 1, mean, na.rm = T)
-
-# Mean stochastic lambda
-perturb.state5.proportion.30.stoch.lambda = mean(perturb.state5.proportion.30.sim.lambda)
-
-# Variance in log lambda across years
-perturb.state5.proportion.30.var.lambda = apply(perturb.state5.proportion.30[[1]], 1, var, na.rm = T)
-
-# Mean extinction probability
-perturb.state5.proportion.30.ext.prob = mean(perturb.state5.proportion.30[[3]])
-
-# Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.proportion.30[[1]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.30[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.proportion.30[[1]], 2, mean, na.rm = T), lwd = 2)
-
-# Density plots
-matplot(t(perturb.state5.proportion.30[[2]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.30[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.proportion.30[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
-
-
-## 3.2.9. Proportion of the years perturbed in state 5 = 0.5 ----
-# ----------------------------------------------------------
-
-print("PERTURBED STAGE 5 - prop = 0.5")
-perturb.state5.proportion.50 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.5)
-
-# Simulation-wise stochastic lambdas
-perturb.state5.proportion.50.sim.lambda = apply(perturb.state5.proportion.50[[1]], 1, mean, na.rm = T)
-
-# Mean stochastic lambda
-perturb.state5.proportion.50.stoch.lambda = mean(perturb.state5.proportion.50.sim.lambda)
-
-# Variance in log lambda across years
-perturb.state5.proportion.50.var.lambda = apply(perturb.state5.proportion.50[[1]], 1, var, na.rm = T)
-
-# Mean extinction probability
-perturb.state5.proportion.50.ext.prob = mean(perturb.state5.proportion.50[[3]])
-
-# Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.proportion.50[[1]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.50[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.proportion.50[[1]], 2, mean, na.rm = T), lwd = 2)
-
-# Density plots
-matplot(t(perturb.state5.proportion.50[[2]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.50[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.proportion.50[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
-
-
-## 3.2.10. Proportion of the years perturbed in state 5 = 0.7 ----
-# ----------------------------------------------------------
-
-print("PERTURBED STAGE 5 - prop = 0.7")
-perturb.state5.proportion.70 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.7)
-
-# Simulation-wise stochastic lambdas
-perturb.state5.proportion.70.sim.lambda = apply(perturb.state5.proportion.70[[1]], 1, mean, na.rm = T)
-
-# Mean stochastic lambda
-perturb.state5.proportion.70.stoch.lambda = mean(perturb.state5.proportion.70.sim.lambda)
-
-# Variance in log lambda across years
-perturb.state5.proportion.70.var.lambda = apply(perturb.state5.proportion.70[[1]], 1, var, na.rm = T)
-
-# Mean extinction probability
-perturb.state5.proportion.70.ext.prob = mean(perturb.state5.proportion.70[[3]])
-
-# Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.proportion.70[[1]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.70[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.proportion.70[[1]], 2, mean, na.rm = T), lwd = 2)
-
-# Density plots
-matplot(t(perturb.state5.proportion.70[[2]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.70[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.proportion.70[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
-
-
-## 3.2.11. Proportion of the years perturbed in state 5 = 0.9 ----
-# ----------------------------------------------------------
-
-print("PERTURBED STAGE 5 - prop = 0.9")
-perturb.state5.proportion.90 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.9)
-
-# Simulation-wise stochastic lambdas
-perturb.state5.proportion.90.sim.lambda = apply(perturb.state5.proportion.90[[1]], 1, mean, na.rm = T)
-
-# Mean stochastic lambda
-perturb.state5.proportion.90.stoch.lambda = mean(perturb.state5.proportion.90.sim.lambda)
-
-# Variance in log lambda across years
-perturb.state5.proportion.90.var.lambda = apply(perturb.state5.proportion.90[[1]], 1, var, na.rm = T)
-
-# Mean extinction probability
-perturb.state5.proportion.90.ext.prob = mean(perturb.state5.proportion.90[[3]])
-
-# Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.proportion.90[[1]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.90[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.proportion.90[[1]], 2, mean, na.rm = T), lwd = 2)
-
-# Density plots
-matplot(t(perturb.state5.proportion.90[[2]]), type = "l", col = rainbow(nrow(perturb.state5.proportion.90[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.proportion.90[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
-
-
-
-
-## 3.3. At average density ----
-# ------------------------
-
-## 3.3.1. Unperturbed periodicity - Control case ----
+## 3.3.1. Unperturbed periodicity - Control case
 # ----------------------------------------------
 
-print("AVG ABUNDANCE - CONTROL (UNPERTURBED PERIODICITY) - p = 0.033")
-control.sim.avgab = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, density = F)
+print("CONTROL (UNPERTURBED PERIODICITY) - freq = 15 years")
+periodicFire15.control.sim = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15)
 
 # Simulation-wise stochastic lambdas
-control.avgab.sim.lambda = apply(control.sim.avgab[[1]], 1, mean, na.rm = T)
+periodicFire15.control.sim.lambda = apply(periodicFire15.control.sim[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-control.avgab.stoch.lambda = mean(control.avgab.sim.lambda)
+periodicFire15.control.stoch.lambda = mean(periodicFire15.control.sim.lambda)
 
 # Variance in log lambda across years
-control.avgab.var.lambda = apply(control.sim.avgab[[1]], 1, var, na.rm = T)
+periodicFire15.control.var.lambda = apply(periodicFire15.control.sim[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-control.avgab.ext.prob = mean(control.sim.avgab[[3]])
+periodicFire15.control.ext.prob = mean(periodicFire15.control.sim[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(control.sim.avgab[[1]]), type = "l", col = rainbow(nrow(control.sim.avgab[[1]])), main = "Simulations yearly log lambda - Control scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(control.sim.avgab[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(periodicFire15.control.sim[[1]]), type = "l", col = rainbow(nrow(periodicFire15.control.sim[[1]])), main = "Simulations yearly log lambda - Control scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.control.sim[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(control.sim.avgab[[2]]), type = "l", col = rainbow(nrow(control.sim.avgab[[2]])), main = "Density over seasonal time steps - Control scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(control.sim.avgab[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(periodicFire15.control.sim[[2]]), type = "l", col = rainbow(nrow(periodicFire15.control.sim[[2]])), main = "Density over seasonal time steps - Control scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") # Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.control.sim[[2]], 2, mean, na.rm = T), lwd = 2) # Average density accross simulations for each time step
 
 
-## 3.3.2. Perturbed state = 1 (TSF0) ----
+## 3.3.2. Perturbed state = 5 (TSF>3) ----
 # ----------------------------------
 
-print("AVG ABUNDANCE - PERTURBED STAGE 1 - p = 0.033")
-perturb.state1.avgab = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 1, density = F)
+print("PERTURBED STATE 5 - freq = 15 years")
+periodicFire15.perturb.state5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = 5)
 
 # Simulation-wise stochastic lambdas
-perturb.state1.avgab.sim.lambda = apply(perturb.state1.avgab[[1]], 1, mean, na.rm = T)
+periodicFire15.perturb.state5.sim.lambda = apply(periodicFire15.perturb.state5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state1.avgab.stoch.lambda = mean(perturb.state1.avgab.sim.lambda)
+periodicFire15.perturb.state5.stoch.lambda = mean(periodicFire15.perturb.state5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state1.avgab.var.lambda = apply(perturb.state1.avgab[[1]], 1, var, na.rm = T)
+periodicFire15.perturb.state5.var.lambda = apply(periodicFire15.perturb.state5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state1.avgab.ext.prob = mean(perturb.state1.avgab[[3]])
+periodicFire15.perturb.state5.ext.prob = mean(periodicFire15.perturb.state5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state1.avgab[[1]]), type = "l", col = rainbow(nrow(perturb.state1.avgab[[1]])), main = "Simulations yearly log lambda - perturb.state1 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state1.avgab[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(periodicFire15.perturb.state5[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state5[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state1.avgab[[2]]), type = "l", col = rainbow(nrow(perturb.state1.avgab[[2]])), main = "Density over seasonal time steps - perturb.state1 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state1.avgab[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(periodicFire15.perturb.state5[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state5[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.3. Perturbed state = 2 (TSF1) ----
+## 3.3.3. Perturbed state = 4 + 5 (TSF3 and TSF>3) ----
+# ------------------------------------------------
+
+print("PERTURBED STATES 4 + 5 - freq = 15 years")
+periodicFire15.perturb.state4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.state4_5.sim.lambda = apply(periodicFire15.perturb.state4_5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.state4_5.stoch.lambda = mean(periodicFire15.perturb.state4_5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.state4_5.var.lambda = apply(periodicFire15.perturb.state4_5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.state4_5.ext.prob = mean(periodicFire15.perturb.state4_5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.state4_5[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state4_5[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state4_5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.state4_5[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state4_5[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.3.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
+
+print("PERTURBED STATES 3 + 4 + 5 - freq = 15 years")
+periodicFire15.perturb.state3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(3, 4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.state3_4_5.sim.lambda = apply(periodicFire15.perturb.state3_4_5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.state3_4_5.stoch.lambda = mean(periodicFire15.perturb.state3_4_5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.state3_4_5.var.lambda = apply(periodicFire15.perturb.state3_4_5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.state3_4_5.ext.prob = mean(periodicFire15.perturb.state3_4_5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.state3_4_5[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state3_4_5[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.state3_4_5[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state3_4_5[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.3.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
+
+print("PERTURBED STATES 2 + 3 + 4 + 5 - freq = 15 years")
+periodicFire15.perturb.state2_3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(2, 3, 4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.state2_3_4_5.sim.lambda = apply(periodicFire15.perturb.state2_3_4_5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.state2_3_4_5.stoch.lambda = mean(periodicFire15.perturb.state2_3_4_5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.state2_3_4_5.var.lambda = apply(periodicFire15.perturb.state2_3_4_5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.state2_3_4_5.ext.prob = mean(periodicFire15.perturb.state2_3_4_5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.state2_3_4_5[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state2_3_4_5[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state2_3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.state2_3_4_5[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state2_3_4_5[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state2_3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.3.6. Perturbed states =  all ----
+# -------------------------------
+
+print("PERTURBED STATES ALL - freq = 15 years")
+periodicFire15.perturb.stateAll = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(1, 2, 3, 4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.stateAll.sim.lambda = apply(periodicFire15.perturb.stateAll[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.stateAll.stoch.lambda = mean(periodicFire15.perturb.stateAll.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.stateAll.var.lambda = apply(periodicFire15.perturb.stateAll[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.stateAll.ext.prob = mean(periodicFire15.perturb.stateAll[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.stateAll[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.stateAll[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.stateAll[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.stateAll[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.stateAll[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.stateAll[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.4. At average density and stochastic fire disturbance (p = 1/30) ----
+# -------------------------------------------------------------------
+
+## 3.4.1. Unperturbed periodicity - Control case ----
+# ----------------------------------------------
+
+print("AVG DENSITY - CONTROL (UNPERTURBED PERIODICITY) - p = 1/30")
+stochasticFire30.control.sim.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire30.control.avgdens.sim.lambda = apply(stochasticFire30.control.sim.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire30.control.avgdens.stoch.lambda = mean(stochasticFire30.control.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire30.control.avgdens.var.lambda = apply(stochasticFire30.control.sim.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire30.control.avgdens.ext.prob = mean(stochasticFire30.control.sim.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire30.control.sim.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.control.sim.avgdens[[1]])), main = "Simulations yearly log lambda - Control scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.control.sim.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire30.control.sim.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.control.sim.avgdens[[2]])), main = "Density over seasonal time steps - Control scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.control.sim.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.4.2. Perturbed state = 5 (TSF>3) ----
 # ----------------------------------
 
-print("AVG ABUNDANCE - PERTURBED STAGE 2 - p = 0.033")
-perturb.state2.avgab = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 2, density = F)
+print("AVG DENSITY - PERTURBED STATE 5 - p = 1/30")
+stochasticFire30.perturb.state5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = 5, density = F)
 
 # Simulation-wise stochastic lambdas
-perturb.state2.avgab.sim.lambda = apply(perturb.state2.avgab[[1]], 1, mean, na.rm = T)
+stochasticFire30.perturb.state5.avgdens.sim.lambda = apply(stochasticFire30.perturb.state5.avgdens[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state2.avgab.stoch.lambda = mean(perturb.state2.avgab.sim.lambda)
+stochasticFire30.perturb.state5.avgdens.stoch.lambda = mean(stochasticFire30.perturb.state5.avgdens.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state2.avgab.var.lambda = apply(perturb.state2.avgab[[1]], 1, var, na.rm = T)
+stochasticFire30.perturb.state5.avgdens.var.lambda = apply(stochasticFire30.perturb.state5.avgdens[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state2.avgab.ext.prob = mean(perturb.state2.avgab[[3]])
+stochasticFire30.perturb.state5.avgdens.ext.prob = mean(stochasticFire30.perturb.state5.avgdens[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state2.avgab[[1]]), type = "l", col = rainbow(nrow(perturb.state2.avgab[[1]])), main = "Simulations yearly log lambda - perturb.state2 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state2.avgab[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire30.perturb.state5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state5.avgdens[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state2.avgab[[2]]), type = "l", col = rainbow(nrow(perturb.state2.avgab[[2]])), main = "Density over seasonal time steps - perturb.state2 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state2.avgab[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire30.perturb.state5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state5.avgdens[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.4. Perturbed state = 3 (TSF2) ----
+## 3.4.3. Perturbed states = 4 + 5 (TSF3 and TSF>3) ----
+# -------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 4 + 5 - p = 1/30")
+stochasticFire30.perturb.state4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire30.perturb.state4_5.avgdens.sim.lambda = apply(stochasticFire30.perturb.state4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire30.perturb.state4_5.avgdens.stoch.lambda = mean(stochasticFire30.perturb.state4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire30.perturb.state4_5.avgdens.var.lambda = apply(stochasticFire30.perturb.state4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire30.perturb.state4_5.avgdens.ext.prob = mean(stochasticFire30.perturb.state4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire30.perturb.state4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire30.perturb.state4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.4.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 3 + 4 + 5 - p = 1/30")
+stochasticFire30.perturb.state3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire30.perturb.state3_4_5.avgdens.sim.lambda = apply(stochasticFire30.perturb.state3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire30.perturb.state3_4_5.avgdens.stoch.lambda = mean(stochasticFire30.perturb.state3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire30.perturb.state3_4_5.avgdens.var.lambda = apply(stochasticFire30.perturb.state3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire30.perturb.state3_4_5.avgdens.ext.prob = mean(stochasticFire30.perturb.state3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire30.perturb.state3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire30.perturb.state3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.4.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATE 2 + 3 + 4 + 5 - p = 1/30")
+stochasticFire30.perturb.state2_3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire30.perturb.state2_3_4_5.avgdens.sim.lambda = apply(stochasticFire30.perturb.state2_3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire30.perturb.state2_3_4_5.avgdens.stoch.lambda = mean(stochasticFire30.perturb.state2_3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire30.perturb.state2_3_4_5.avgdens.var.lambda = apply(stochasticFire30.perturb.state2_3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire30.perturb.state2_3_4_5.avgdens.ext.prob = mean(stochasticFire30.perturb.state2_3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire30.perturb.state2_3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state2_3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.state2_3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire30.perturb.state2_3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.state2_3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.state2_3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.4.6. Perturbed states = all ----
+# ------------------------------
+
+print("AVG DENSITY - PERTURBED STATES ALL - p = 1/30")
+stochasticFire30.perturb.stateAll.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/30, perturbed.state = c(1, 2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire30.perturb.stateAll.avgdens.sim.lambda = apply(stochasticFire30.perturb.stateAll.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire30.perturb.stateAll.avgdens.stoch.lambda = mean(stochasticFire30.perturb.stateAll.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire30.perturb.stateAll.avgdens.var.lambda = apply(stochasticFire30.perturb.stateAll.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire30.perturb.stateAll.avgdens.ext.prob = mean(stochasticFire30.perturb.stateAll.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire30.perturb.stateAll.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.stateAll.avgdens[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire30.perturb.stateAll.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire30.perturb.stateAll.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire30.perturb.stateAll.avgdens[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (stochastic fire, p = 30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire30.perturb.stateAll.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+
+## 3.5. At average density and periodic fire disturbance (f = 15) ----
+# ---------------------------------------------------------------
+
+## 3.5.1. Unperturbed periodicity - Control case ----
+# ----------------------------------------------
+
+print("AVG DENSITY - CONTROL (UNPERTURBED PERIODICITY) - freq = 15 years")
+periodicFire15.control.sim.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire15.control.avgdens.sim.lambda = apply(periodicFire15.control.sim.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.control.avgdens.stoch.lambda = mean(periodicFire15.control.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.control.avgdens.var.lambda = apply(periodicFire15.control.sim.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.control.avgdens.ext.prob = mean(periodicFire15.control.sim.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.control.sim.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire15.control.sim.avgdens[[1]])), main = "Simulations yearly log lambda - Control scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.control.sim.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.control.sim.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire15.control.sim.avgdens[[2]])), main = "Density over seasonal time steps - Control scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.control.sim.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.5.2. Perturbed state = 5 (TSF>3) ----
 # ----------------------------------
 
-print("AVG ABUNDANCE - PERTURBED STAGE 3 - p = 0.033")
-perturb.state3.avgab = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 3, density = F)
+print("AVG DENSITY - PERTURBED STATE 5 - freq = 15 years")
+periodicFire15.perturb.state5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = 5, density = F)
 
 # Simulation-wise stochastic lambdas
-perturb.state3.avgab.sim.lambda = apply(perturb.state3.avgab[[1]], 1, mean, na.rm = T)
+periodicFire15.perturb.state5.avgdens.sim.lambda = apply(periodicFire15.perturb.state5.avgdens[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state3.avgab.stoch.lambda = mean(perturb.state3.avgab.sim.lambda)
+periodicFire15.perturb.state5.avgdens.stoch.lambda = mean(periodicFire15.perturb.state5.avgdens.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state3.avgab.var.lambda = apply(perturb.state3.avgab[[1]], 1, var, na.rm = T)
+periodicFire15.perturb.state5.avgdens.var.lambda = apply(periodicFire15.perturb.state5.avgdens[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state3.avgab.ext.prob = mean(perturb.state3.avgab[[3]])
+periodicFire15.perturb.state5.avgdens.ext.prob = mean(periodicFire15.perturb.state5.avgdens[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state3.avgab[[1]]), type = "l", col = rainbow(nrow(perturb.state3.avgab[[1]])), main = "Simulations yearly log lambda - perturb.state3 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state3.avgab[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(periodicFire15.perturb.state5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state5.avgdens[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state3.avgab[[2]]), type = "l", col = rainbow(nrow(perturb.state3.avgab[[2]])), main = "Density over seasonal time steps - perturb.state3 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state3.avgab[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(periodicFire15.perturb.state5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state5.avgdens[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.5. Perturbed state = 4 (TSF3) ----
+## 3.5.3. Perturbed states = 4 + 5 (TSF3 and TSF>3) ----
+# -------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 4 + 5 - freq = 15 years")
+periodicFire15.perturb.state4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.state4_5.avgdens.sim.lambda = apply(periodicFire15.perturb.state4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.state4_5.avgdens.stoch.lambda = mean(periodicFire15.perturb.state4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.state4_5.avgdens.var.lambda = apply(periodicFire15.perturb.state4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.state4_5.avgdens.ext.prob = mean(periodicFire15.perturb.state4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.state4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.state4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.5.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 3 + 4 + 5 - freq = 15 years")
+periodicFire15.perturb.state3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.state3_4_5.avgdens.sim.lambda = apply(periodicFire15.perturb.state3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.state3_4_5.avgdens.stoch.lambda = mean(periodicFire15.perturb.state3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.state3_4_5.avgdens.var.lambda = apply(periodicFire15.perturb.state3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.state3_4_5.avgdens.ext.prob = mean(periodicFire15.perturb.state3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.state3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.state3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.5.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATE 2 + 3 + 4 + 5 - freq = 15 years")
+periodicFire15.perturb.state2_3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.state2_3_4_5.avgdens.sim.lambda = apply(periodicFire15.perturb.state2_3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.state2_3_4_5.avgdens.stoch.lambda = mean(periodicFire15.perturb.state2_3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.state2_3_4_5.avgdens.var.lambda = apply(periodicFire15.perturb.state2_3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.state2_3_4_5.avgdens.ext.prob = mean(periodicFire15.perturb.state2_3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.state2_3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state2_3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.state2_3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.state2_3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.state2_3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.state2_3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.5.6. Perturbed states = all ----
+# ------------------------------
+
+print("AVG DENSITY - PERTURBED STATES ALL - freq = 15 years")
+periodicFire15.perturb.stateAll.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 15, perturbed.state = c(1, 2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire15.perturb.stateAll.avgdens.sim.lambda = apply(periodicFire15.perturb.stateAll.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire15.perturb.stateAll.avgdens.stoch.lambda = mean(periodicFire15.perturb.stateAll.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire15.perturb.stateAll.avgdens.var.lambda = apply(periodicFire15.perturb.stateAll.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire15.perturb.stateAll.avgdens.ext.prob = mean(periodicFire15.perturb.stateAll.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire15.perturb.stateAll.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.stateAll.avgdens[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire15.perturb.stateAll.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire15.perturb.stateAll.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire15.perturb.stateAll.avgdens[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (periodic fire, f = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire15.perturb.stateAll.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.6. With density dependence and stochastic fire disturbance (p = 15) ----
+# ----------------------------------------------------------------------
+
+## 3.6.1. Unperturbed periodicity - Control case
+# ----------------------------------------------
+
+print("CONTROL (UNPERTURBED PERIODICITY) - p = 1/15")
+stochasticFire15.control.sim = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15)
+
+# Simulation-wise stochastic lambdas
+stochasticFire15.control.sim.lambda = apply(stochasticFire15.control.sim[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire15.control.stoch.lambda = mean(stochasticFire15.control.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire15.control.var.lambda = apply(stochasticFire15.control.sim[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire15.control.ext.prob = mean(stochasticFire15.control.sim[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire15.control.sim[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.control.sim[[1]])), main = "Simulations yearly log lambda - Control scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.control.sim[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire15.control.sim[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.control.sim[[2]])), main = "Density over seasonal time steps - Control scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") # Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.control.sim[[2]], 2, mean, na.rm = T), lwd = 2) # Average density accross simulations for each time step
+
+
+## 3.6.2. Perturbed state = 5 (TSF>3) ----
 # ----------------------------------
 
-print("AVG ABUNDANCE - PERTURBED STAGE 4 - p = 0.033")
-perturb.state4.avgab = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 4, density = F)
+print("PERTURBED STATE 5 - p = 1/15")
+stochasticFire15.perturb.state5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = 5)
 
 # Simulation-wise stochastic lambdas
-perturb.state4.avgab.sim.lambda = apply(perturb.state4.avgab[[1]], 1, mean, na.rm = T)
+stochasticFire15.perturb.state5.sim.lambda = apply(stochasticFire15.perturb.state5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state4.avgab.stoch.lambda = mean(perturb.state4.avgab.sim.lambda)
+stochasticFire15.perturb.state5.stoch.lambda = mean(stochasticFire15.perturb.state5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state4.avgab.var.lambda = apply(perturb.state4.avgab[[1]], 1, var, na.rm = T)
+stochasticFire15.perturb.state5.var.lambda = apply(stochasticFire15.perturb.state5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state4.avgab.ext.prob = mean(perturb.state4.avgab[[3]])
+stochasticFire15.perturb.state5.ext.prob = mean(stochasticFire15.perturb.state5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state4.avgab[[1]]), type = "l", col = rainbow(nrow(perturb.state4.avgab[[1]])), main = "Simulations yearly log lambda - perturb.state4 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state4.avgab[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.perturb.state5[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state5[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state4.avgab[[2]]), type = "l", col = rainbow(nrow(perturb.state4.avgab[[2]])), main = "Density over seasonal time steps - perturb.state4 scenario ", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state4.avgab[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.perturb.state5[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state5[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.6. Perturbed state = 5 (TSF>3) ----
-# -----------------------------------
+## 3.6.3. Perturbed state = 4 + 5 (TSF3 and TSF>3) ----
+# ------------------------------------------------
 
-print("AVG ABUNDANCE - PERTURBED STAGE 5 - p = 0.033")
-perturb.state5.avgab = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, density = F)
+print("PERTURBED STATES 4 + 5 - p = 1/15")
+stochasticFire15.perturb.state4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state5.avgab.sim.lambda = apply(perturb.state5.avgab[[1]], 1, mean, na.rm = T)
+stochasticFire15.perturb.state4_5.sim.lambda = apply(stochasticFire15.perturb.state4_5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.avgab.stoch.lambda = mean(perturb.state5.avgab.sim.lambda)
+stochasticFire15.perturb.state4_5.stoch.lambda = mean(stochasticFire15.perturb.state4_5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.avgab.var.lambda = apply(perturb.state5.avgab[[1]], 1, var, na.rm = T)
+stochasticFire15.perturb.state4_5.var.lambda = apply(stochasticFire15.perturb.state4_5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.avgab.ext.prob = mean(perturb.state5.avgab[[3]])
+stochasticFire15.perturb.state4_5.ext.prob = mean(stochasticFire15.perturb.state4_5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.avgab[[1]]), type = "l", col = rainbow(nrow(perturb.state5.avgab[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.avgab[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.perturb.state4_5[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state4_5[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state4_5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5.avgab[[2]]), type = "l", col = rainbow(nrow(perturb.state5.avgab[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.avgab[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.perturb.state4_5[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state4_5[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.7. Proportion of the years perturbed in state 5 = 0.1 ----
-# ----------------------------------------------------------
+## 3.6.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
 
-print("PERTURBED STAGE 5 - prop = 0.1")
-perturb.state5.avgab.proportion.10 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.1, density = F)
+print("PERTURBED STATES 3 + 4 + 5 - p = 1/15")
+stochasticFire15.perturb.state3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(3, 4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state5.avgab.proportion.10.sim.lambda = apply(perturb.state5.avgab.proportion.10[[1]], 1, mean, na.rm = T)
+stochasticFire15.perturb.state3_4_5.sim.lambda = apply(stochasticFire15.perturb.state3_4_5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.avgab.proportion.10.stoch.lambda = mean(perturb.state5.avgab.proportion.10.sim.lambda)
+stochasticFire15.perturb.state3_4_5.stoch.lambda = mean(stochasticFire15.perturb.state3_4_5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.avgab.proportion.10.var.lambda = apply(perturb.state5.avgab.proportion.10[[1]], 1, var, na.rm = T)
+stochasticFire15.perturb.state3_4_5.var.lambda = apply(stochasticFire15.perturb.state3_4_5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.avgab.proportion.10.ext.prob = mean(perturb.state5.avgab.proportion.10[[3]])
+stochasticFire15.perturb.state3_4_5.ext.prob = mean(stochasticFire15.perturb.state3_4_5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.avgab.proportion.10[[1]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.10[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.avgab.proportion.10[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.perturb.state3_4_5[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state3_4_5[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5.avgab.proportion.10[[2]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.10[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.avgab.proportion.10[[2]], 2, mean), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.perturb.state3_4_5[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state3_4_5[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.8. Proportion of the years perturbed in state 5 = 0.3 ----
-# ----------------------------------------------------------
+## 3.6.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
 
-print("PERTURBED STAGE 5 - prop = 0.3")
-perturb.state5.avgab.proportion.30 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.3, density = F)
+print("PERTURBED STATES 2 + 3 + 4 + 5 - p = 1/15")
+stochasticFire15.perturb.state2_3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(2, 3, 4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state5.avgab.proportion.30.sim.lambda = apply(perturb.state5.avgab.proportion.30[[1]], 1, mean, na.rm = T)
+stochasticFire15.perturb.state2_3_4_5.sim.lambda = apply(stochasticFire15.perturb.state2_3_4_5[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.avgab.proportion.30.stoch.lambda = mean(perturb.state5.avgab.proportion.30.sim.lambda)
+stochasticFire15.perturb.state2_3_4_5.stoch.lambda = mean(stochasticFire15.perturb.state2_3_4_5.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.avgab.proportion.30.var.lambda = apply(perturb.state5.avgab.proportion.30[[1]], 1, var, na.rm = T)
+stochasticFire15.perturb.state2_3_4_5.var.lambda = apply(stochasticFire15.perturb.state2_3_4_5[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.avgab.proportion.30.ext.prob = mean(perturb.state5.avgab.proportion.30[[3]])
+stochasticFire15.perturb.state2_3_4_5.ext.prob = mean(stochasticFire15.perturb.state2_3_4_5[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.avgab.proportion.30[[1]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.30[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.avgab.proportion.30[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.perturb.state2_3_4_5[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state2_3_4_5[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state2_3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5.avgab.proportion.30[[2]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.30[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.avgab.proportion.30[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.perturb.state2_3_4_5[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state2_3_4_5[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state2_3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.9. Proportion of the years perturbed in state 5 = 0.5 ----
-# ----------------------------------------------------------
+## 3.6.6. Perturbed states =  all ----
+# -------------------------------
 
-print("PERTURBED STAGE 5 - prop = 0.5")
-perturb.state5.avgab.proportion.50 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.5, density = F)
+print("PERTURBED STATES ALL - p = 1/15")
+stochasticFire15.perturb.stateAll = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(1, 2, 3, 4, 5))
 
 # Simulation-wise stochastic lambdas
-perturb.state5.avgab.proportion.50.sim.lambda = apply(perturb.state5.avgab.proportion.50[[1]], 1, mean, na.rm = T)
+stochasticFire15.perturb.stateAll.sim.lambda = apply(stochasticFire15.perturb.stateAll[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.avgab.proportion.50.stoch.lambda = mean(perturb.state5.avgab.proportion.50.sim.lambda)
+stochasticFire15.perturb.stateAll.stoch.lambda = mean(stochasticFire15.perturb.stateAll.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.avgab.proportion.50.var.lambda = apply(perturb.state5.avgab.proportion.50[[1]], 1, var, na.rm = T)
+stochasticFire15.perturb.stateAll.var.lambda = apply(stochasticFire15.perturb.stateAll[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.avgab.proportion.50.ext.prob = mean(perturb.state5.avgab.proportion.50[[3]])
+stochasticFire15.perturb.stateAll.ext.prob = mean(stochasticFire15.perturb.stateAll[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.avgab.proportion.50[[1]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.50[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.avgab.proportion.50[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.perturb.stateAll[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.stateAll[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.stateAll[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5.avgab.proportion.50[[2]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.50[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.avgab.proportion.50[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.perturb.stateAll[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.stateAll[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.stateAll[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.10. Proportion of the years perturbed in state 5 = 0.7 ----
-# ----------------------------------------------------------
+## 3.7. At average density and stochastic fire disturbance (p = 1/15) ----
+# -------------------------------------------------------------------
 
-print("PERTURBED STAGE 5 - prop = 0.7")
-perturb.state5.avgab.proportion.70 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.7, density = F)
+## 3.7.1. Unperturbed periodicity - Control case ----
+# ----------------------------------------------
+
+print("AVG DENSITY - CONTROL (UNPERTURBED PERIODICITY) - p = 1/15")
+stochasticFire15.control.sim.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, density = F)
 
 # Simulation-wise stochastic lambdas
-perturb.state5.avgab.proportion.70.sim.lambda = apply(perturb.state5.avgab.proportion.70[[1]], 1, mean, na.rm = T)
+stochasticFire15.control.avgdens.sim.lambda = apply(stochasticFire15.control.sim.avgdens[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.avgab.proportion.70.stoch.lambda = mean(perturb.state5.avgab.proportion.70.sim.lambda)
+stochasticFire15.control.avgdens.stoch.lambda = mean(stochasticFire15.control.avgdens.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.avgab.proportion.70.var.lambda = apply(perturb.state5.avgab.proportion.70[[1]], 1, var, na.rm = T)
+stochasticFire15.control.avgdens.var.lambda = apply(stochasticFire15.control.sim.avgdens[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.avgab.proportion.70.ext.prob = mean(perturb.state5.avgab.proportion.70[[3]])
+stochasticFire15.control.avgdens.ext.prob = mean(stochasticFire15.control.sim.avgdens[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.avgab.proportion.70[[1]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.70[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.avgab.proportion.70[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.control.sim.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.control.sim.avgdens[[1]])), main = "Simulations yearly log lambda - Control scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.control.sim.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5.avgab.proportion.70[[2]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.70[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.avgab.proportion.70[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.control.sim.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.control.sim.avgdens[[2]])), main = "Density over seasonal time steps - Control scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.control.sim.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
 
 
-## 3.3.11. Proportion of the years perturbed in state 5 = 0.9 ----
-# ----------------------------------------------------------
+## 3.7.2. Perturbed state = 5 (TSF>3) ----
+# ----------------------------------
 
-print("PERTURBED STAGE 5 - prop = 0.9")
-perturb.state5.avgab.proportion.90 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, fire.prob = 0.033, perturbed.state = 5, state5.perturbed.years.prop = 0.9, density = F)
+print("AVG DENSITY - PERTURBED STATE 5 - p = 1/15")
+stochasticFire15.perturb.state5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = 5, density = F)
 
 # Simulation-wise stochastic lambdas
-perturb.state5.avgab.proportion.90.sim.lambda = apply(perturb.state5.avgab.proportion.90[[1]], 1, mean, na.rm = T)
+stochasticFire15.perturb.state5.avgdens.sim.lambda = apply(stochasticFire15.perturb.state5.avgdens[[1]], 1, mean, na.rm = T)
 
 # Mean stochastic lambda
-perturb.state5.avgab.proportion.90.stoch.lambda = mean(perturb.state5.avgab.proportion.90.sim.lambda)
+stochasticFire15.perturb.state5.avgdens.stoch.lambda = mean(stochasticFire15.perturb.state5.avgdens.sim.lambda)
 
 # Variance in log lambda across years
-perturb.state5.avgab.proportion.90.var.lambda = apply(perturb.state5.avgab.proportion.90[[1]], 1, var, na.rm = T)
+stochasticFire15.perturb.state5.avgdens.var.lambda = apply(stochasticFire15.perturb.state5.avgdens[[1]], 1, var, na.rm = T)
 
 # Mean extinction probability
-perturb.state5.avgab.proportion.90.ext.prob = mean(perturb.state5.avgab.proportion.90[[3]])
+stochasticFire15.perturb.state5.avgdens.ext.prob = mean(stochasticFire15.perturb.state5.avgdens[[3]])
 
 # Yearly log lambdas for each simulation, and mean
-matplot(t(perturb.state5.avgab.proportion.90[[1]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.90[[1]])), main = "Simulations yearly log lambda - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Log lambda")
-lines(apply(perturb.state5.avgab.proportion.90[[1]], 2, mean, na.rm = T), lwd = 2)
+matplot(t(stochasticFire15.perturb.state5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state5.avgdens[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
 
 # Density plots
-matplot(t(perturb.state5.avgab.proportion.90[[2]]), type = "l", col = rainbow(nrow(perturb.state5.avgab.proportion.90[[2]])), main = "Density over seasonal time steps - perturb.state5 scenario", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
-lines(apply(perturb.state5.avgab.proportion.90[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+matplot(t(stochasticFire15.perturb.state5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state5.avgdens[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.7.3. Perturbed states = 4 + 5 (TSF3 and TSF>3) ----
+# -------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 4 + 5 - p = 1/15")
+stochasticFire15.perturb.state4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire15.perturb.state4_5.avgdens.sim.lambda = apply(stochasticFire15.perturb.state4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire15.perturb.state4_5.avgdens.stoch.lambda = mean(stochasticFire15.perturb.state4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire15.perturb.state4_5.avgdens.var.lambda = apply(stochasticFire15.perturb.state4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire15.perturb.state4_5.avgdens.ext.prob = mean(stochasticFire15.perturb.state4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire15.perturb.state4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire15.perturb.state4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.7.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 3 + 4 + 5 - p = 1/15")
+stochasticFire15.perturb.state3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire15.perturb.state3_4_5.avgdens.sim.lambda = apply(stochasticFire15.perturb.state3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire15.perturb.state3_4_5.avgdens.stoch.lambda = mean(stochasticFire15.perturb.state3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire15.perturb.state3_4_5.avgdens.var.lambda = apply(stochasticFire15.perturb.state3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire15.perturb.state3_4_5.avgdens.ext.prob = mean(stochasticFire15.perturb.state3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire15.perturb.state3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire15.perturb.state3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.7.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATE 2 + 3 + 4 + 5 - p = 1/15")
+stochasticFire15.perturb.state2_3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire15.perturb.state2_3_4_5.avgdens.sim.lambda = apply(stochasticFire15.perturb.state2_3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire15.perturb.state2_3_4_5.avgdens.stoch.lambda = mean(stochasticFire15.perturb.state2_3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire15.perturb.state2_3_4_5.avgdens.var.lambda = apply(stochasticFire15.perturb.state2_3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire15.perturb.state2_3_4_5.avgdens.ext.prob = mean(stochasticFire15.perturb.state2_3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire15.perturb.state2_3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state2_3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.state2_3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire15.perturb.state2_3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.state2_3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.state2_3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.7.6. Perturbed states = all ----
+# ------------------------------
+
+print("AVG DENSITY - PERTURBED STATES ALL - p = 1/15")
+stochasticFire15.perturb.stateAll.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "stochastic", fire.prob = 1/15, perturbed.state = c(1, 2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+stochasticFire15.perturb.stateAll.avgdens.sim.lambda = apply(stochasticFire15.perturb.stateAll.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+stochasticFire15.perturb.stateAll.avgdens.stoch.lambda = mean(stochasticFire15.perturb.stateAll.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+stochasticFire15.perturb.stateAll.avgdens.var.lambda = apply(stochasticFire15.perturb.stateAll.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+stochasticFire15.perturb.stateAll.avgdens.ext.prob = mean(stochasticFire15.perturb.stateAll.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(stochasticFire15.perturb.stateAll.avgdens[[1]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.stateAll.avgdens[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(stochasticFire15.perturb.stateAll.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(stochasticFire15.perturb.stateAll.avgdens[[2]]), type = "l", col = rainbow(nrow(stochasticFire15.perturb.stateAll.avgdens[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (stochastic fire, p = 1/15)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(stochasticFire15.perturb.stateAll.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.8. With density dependence and periodic fire disturbance (f = 1/30) ----
+# ----------------------------------------------------------------------
+
+## 3.8.1. Unperturbed periodicity - Control case
+# ----------------------------------------------
+
+print("CONTROL (UNPERTURBED PERIODICITY) - freq = 30 years")
+periodicFire30.control.sim = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.control.sim.lambda = apply(periodicFire30.control.sim[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.control.stoch.lambda = mean(periodicFire30.control.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.control.var.lambda = apply(periodicFire30.control.sim[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.control.ext.prob = mean(periodicFire30.control.sim[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.control.sim[[1]]), type = "l", col = rainbow(nrow(periodicFire30.control.sim[[1]])), main = "Simulations yearly log lambda - Control scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.control.sim[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.control.sim[[2]]), type = "l", col = rainbow(nrow(periodicFire30.control.sim[[2]])), main = "Density over seasonal time steps - Control scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") # Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.control.sim[[2]], 2, mean, na.rm = T), lwd = 2) # Average density accross simulations for each time step
+
+
+## 3.8.2. Perturbed state = 5 (TSF>3) ----
+# ----------------------------------
+
+print("PERTURBED STATE 5 - freq = 30 years")
+periodicFire30.perturb.state5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = 5)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state5.sim.lambda = apply(periodicFire30.perturb.state5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state5.stoch.lambda = mean(periodicFire30.perturb.state5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state5.var.lambda = apply(periodicFire30.perturb.state5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state5.ext.prob = mean(periodicFire30.perturb.state5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state5[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state5[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state5[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state5[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.8.3. Perturbed state = 4 + 5 (TSF3 and TSF>3) ----
+# ------------------------------------------------
+
+print("PERTURBED STATES 4 + 5 - freq = 30 years")
+periodicFire30.perturb.state4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state4_5.sim.lambda = apply(periodicFire30.perturb.state4_5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state4_5.stoch.lambda = mean(periodicFire30.perturb.state4_5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state4_5.var.lambda = apply(periodicFire30.perturb.state4_5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state4_5.ext.prob = mean(periodicFire30.perturb.state4_5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state4_5[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state4_5[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state4_5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state4_5[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state4_5[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.8.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
+
+print("PERTURBED STATES 3 + 4 + 5 - freq = 30 years")
+periodicFire30.perturb.state3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(3, 4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state3_4_5.sim.lambda = apply(periodicFire30.perturb.state3_4_5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state3_4_5.stoch.lambda = mean(periodicFire30.perturb.state3_4_5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state3_4_5.var.lambda = apply(periodicFire30.perturb.state3_4_5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state3_4_5.ext.prob = mean(periodicFire30.perturb.state3_4_5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state3_4_5[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state3_4_5[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state3_4_5[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state3_4_5[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.8.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
+
+print("PERTURBED STATES 2 + 3 + 4 + 5 - freq = 30 years")
+periodicFire30.perturb.state2_3_4_5 = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(2, 3, 4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state2_3_4_5.sim.lambda = apply(periodicFire30.perturb.state2_3_4_5[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state2_3_4_5.stoch.lambda = mean(periodicFire30.perturb.state2_3_4_5.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state2_3_4_5.var.lambda = apply(periodicFire30.perturb.state2_3_4_5[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state2_3_4_5.ext.prob = mean(periodicFire30.perturb.state2_3_4_5[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state2_3_4_5[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state2_3_4_5[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state2_3_4_5[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state2_3_4_5[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state2_3_4_5[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state2_3_4_5[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.8.6. Perturbed states =  all ----
+# -------------------------------
+
+print("PERTURBED ALL STATES - freq = 30 years")
+periodicFire30.perturb.stateAll = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(1, 2, 3, 4, 5))
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.stateAll.sim.lambda = apply(periodicFire30.perturb.stateAll[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.stateAll.stoch.lambda = mean(periodicFire30.perturb.stateAll.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.stateAll.var.lambda = apply(periodicFire30.perturb.stateAll[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.stateAll.ext.prob = mean(periodicFire30.perturb.stateAll[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.stateAll[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.stateAll[[1]])), main = "Simulations yearly log lambda - States all perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.stateAll[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.stateAll[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.stateAll[[2]])), main = "Density over seasonal time steps - States all perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.stateAll[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.9. At average density and periodic fire disturbance (f = 1/30) ----
+# -----------------------------------------------------------------
+
+## 3.9.1. Unperturbed periodicity - Control case ----
+# ----------------------------------------------
+
+print("AVG DENSITY - CONTROL (UNPERTURBED PERIODICITY) - freq = 30 years")
+periodicFire30.control.sim.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.control.avgdens.sim.lambda = apply(periodicFire30.control.sim.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.control.avgdens.stoch.lambda = mean(periodicFire30.control.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.control.avgdens.var.lambda = apply(periodicFire30.control.sim.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.control.avgdens.ext.prob = mean(periodicFire30.control.sim.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.control.sim.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire30.control.sim.avgdens[[1]])), main = "Simulations yearly log lambda - Control scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.control.sim.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.control.sim.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire30.control.sim.avgdens[[2]])), main = "Density over seasonal time steps - Control scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.control.sim.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.9.2. Perturbed state = 5 (TSF>3) ----
+# ----------------------------------
+
+print("AVG DENSITY - PERTURBED STATE 5 - freq = 30 years")
+periodicFire30.perturb.state5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = 5, density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state5.avgdens.sim.lambda = apply(periodicFire30.perturb.state5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state5.avgdens.stoch.lambda = mean(periodicFire30.perturb.state5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state5.avgdens.var.lambda = apply(periodicFire30.perturb.state5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state5.avgdens.ext.prob = mean(periodicFire30.perturb.state5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state5.avgdens[[1]])), main = "Simulations yearly log lambda - State 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state5.avgdens[[2]])), main = "Density over seasonal time steps - State 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.9.3. Perturbed states = 4 + 5 (TSF3 and TSF>3) ----
+# -------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 4 + 5 - freq = 30 years")
+periodicFire30.perturb.state4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state4_5.avgdens.sim.lambda = apply(periodicFire30.perturb.state4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state4_5.avgdens.stoch.lambda = mean(periodicFire30.perturb.state4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state4_5.avgdens.var.lambda = apply(periodicFire30.perturb.state4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state4_5.avgdens.ext.prob = mean(periodicFire30.perturb.state4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.9.4. Perturbed states = 3 + 4 + 5 (TSF2, TSF3, and TSF>3) ----
+# ------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATES 3 + 4 + 5 - freq = 30 years")
+periodicFire30.perturb.state3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state3_4_5.avgdens.sim.lambda = apply(periodicFire30.perturb.state3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state3_4_5.avgdens.stoch.lambda = mean(periodicFire30.perturb.state3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state3_4_5.avgdens.var.lambda = apply(periodicFire30.perturb.state3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state3_4_5.avgdens.ext.prob = mean(periodicFire30.perturb.state3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.9.5. Perturbed states = 2 + 3 + 4 + 5 (TSF1, TSF2, TSF3, and TSF>3) ----
+# ----------------------------------------------------------------------
+
+print("AVG DENSITY - PERTURBED STATE 2 + 3 + 4 + 5 - freq = 30 years")
+periodicFire30.perturb.state2_3_4_5.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.state2_3_4_5.avgdens.sim.lambda = apply(periodicFire30.perturb.state2_3_4_5.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.state2_3_4_5.avgdens.stoch.lambda = mean(periodicFire30.perturb.state2_3_4_5.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.state2_3_4_5.avgdens.var.lambda = apply(periodicFire30.perturb.state2_3_4_5.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.state2_3_4_5.avgdens.ext.prob = mean(periodicFire30.perturb.state2_3_4_5.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.state2_3_4_5.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state2_3_4_5.avgdens[[1]])), main = "Simulations yearly log lambda - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.state2_3_4_5.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.state2_3_4_5.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.state2_3_4_5.avgdens[[2]])), main = "Density over seasonal time steps - States 2 + 3 + 4 + 5 perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.state2_3_4_5.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
+
+## 3.9.6. Perturbed states = all ----
+# ------------------------------
+
+print("AVG DENSITY - PERTURBED STATES ALL - freq = 30 years")
+periodicFire30.perturb.stateAll.avgdens = stoch.sim.droso(nsimul = 500, nyears = 100, n0 = n0, disturbance.type = "periodic", fire.freq = 30, perturbed.state = c(1, 2, 3, 4, 5), density = F)
+
+# Simulation-wise stochastic lambdas
+periodicFire30.perturb.stateAll.avgdens.sim.lambda = apply(periodicFire30.perturb.stateAll.avgdens[[1]], 1, mean, na.rm = T)
+
+# Mean stochastic lambda
+periodicFire30.perturb.stateAll.avgdens.stoch.lambda = mean(periodicFire30.perturb.stateAll.avgdens.sim.lambda)
+
+# Variance in log lambda across years
+periodicFire30.perturb.stateAll.avgdens.var.lambda = apply(periodicFire30.perturb.stateAll.avgdens[[1]], 1, var, na.rm = T)
+
+# Mean extinction probability
+periodicFire30.perturb.stateAll.avgdens.ext.prob = mean(periodicFire30.perturb.stateAll.avgdens[[3]])
+
+# Yearly log lambdas for each simulation, and mean
+matplot(t(periodicFire30.perturb.stateAll.avgdens[[1]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.stateAll.avgdens[[1]])), main = "Simulations yearly log lambda - All states perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Log lambda")
+lines(apply(periodicFire30.perturb.stateAll.avgdens[[1]], 2, mean, na.rm = T), lwd = 2)
+
+# Density plots
+matplot(t(periodicFire30.perturb.stateAll.avgdens[[2]]), type = "l", col = rainbow(nrow(periodicFire30.perturb.stateAll.avgdens[[2]])), main = "Density over seasonal time steps - All states perturbed scenario (periodic fire, f = 1/30)", xlab = "Time steps (years)", ylab = "Density") #Matplot plots columns of a matrix so we need to use t() for it to plot the rows
+lines(apply(periodicFire30.perturb.stateAll.avgdens[[2]], 2, mean, na.rm = T), lwd = 2) #Average density accross simulations for each time step
+
 
 
 
@@ -1332,5 +2049,4 @@ lines(apply(perturb.state5.avgab.proportion.90[[2]], 2, mean, na.rm = T), lwd = 
 #
 ###########################################################################
 
-save.image("DewyPineProjectionsResults.RData")
-
+save.image("DewyPine_NewProjections_Results.RData")

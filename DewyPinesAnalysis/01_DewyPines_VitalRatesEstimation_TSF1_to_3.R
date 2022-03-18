@@ -1,9 +1,16 @@
-############################################################################
+##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
-# This script uses the data of a dewy pine population in South-Eastern Spain collected between 2012 and 2019. 
-# The aim of this script is to model the survival, transitions, and reproductive rates of four life-history stages: seedlings, juveniles, and small and large reproductive adults. We model the rates in different post-fire habitat states in natural populations (i.e., natural fire return) and populations under fire management policies and exposed to human disturbances, i.e., livestock trampling and grazing. In this script, we model the vital rates for time since fire (TSF) 1 to 3.
+# This script uses the data of a dewy pine population in South-Eastern Spain collected 
+# between 2012 and 2019. 
+# The aim of this script is to model the survival, transitions, and reproductive rates of four 
+# life-history stages: seedlings, juveniles, and small and large reproductive adults. 
+# We model the rates in different post-fire habitat states in natural populations 
+# (i.e., natural fire return) and populations under fire management policies and exposed to 
+# human disturbances, i.e., livestock trampling and grazing. 
+# In this script, we model the vital rates for time since fire (TSF) 1 to 3.
 #
 # Author: Eva Conquet
 #
@@ -11,7 +18,7 @@
 
 ###########################################################################
 #
-# 1. House keeping and loading libraries and data
+# 1. House keeping and loading libraries and data ----
 #
 ###########################################################################
 
@@ -2462,7 +2469,7 @@ vr.per.TSF.per.site$nbfpsLR[which(vr.per.TSF.per.site$site == "siteF")] = c(NA, 
 ## 4.1. Saving updated dataset, number of squares, vital rates, and density table ----
 # -------------------------------------------------------------------------------
 
-write.csv(data.droso, "../RData/dataDroso_2019_formatted.csv", row.names = F)
+write.csv(data.droso, "dataDroso_2019_formatted.csv", row.names = F)
 write.csv(nbsquares.per.site.per.TSF, "NbSquares_PerSites_TSF1_3.csv", row.names = F)
 write.csv(vr.per.TSF.per.site, "DPVR_TSF1_to_3.csv", row.names = F)
 write.csv(mean.density.per.site.per.TSF, "MeanDensities.csv", row.names = F)

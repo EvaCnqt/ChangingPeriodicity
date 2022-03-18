@@ -1,9 +1,12 @@
-############################################################################
+##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
-# This script uses the data of a dewy pine population in South-Eastern Spain collected between 2012 and 2019. 
-# The aim of this script is to define vital rates for the seed bank, number of seeds per flower, and compute seed bank transition rates to seedlings or juveniles for TSF0.
+# This script uses the data of a dewy pine population in South-Eastern Spain collected 
+# between 2012 and 2019. 
+# The aim of this script is to define vital rates for the seed bank, number of seeds per flower, 
+# and compute seed bank transition rates to seedlings or juveniles for TSF0.
 #
 # Author: Eva Conquet
 #

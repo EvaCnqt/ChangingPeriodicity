@@ -1,9 +1,14 @@
-############################################################################
+##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
-# This script uses the data of a dewy pine population in South-Eastern Spain collected between 2012 and 2019. 
-# The aim of this script is to model the survival, transitions, and reproductive rates of four life-history stages: seedlings, juveniles, and small and large reproductive adults. We model the rates in the last stochastic post-fire habitat, TSF>3, in natural populations (i.e., low grazing) and populations exposed to human disturbances (i.e. high grazing).
+# This script uses the data of a dewy pine population in South-Eastern Spain collected 
+# between 2012 and 2019. 
+# The aim of this script is to model the survival, transitions, and reproductive rates of four 
+# life-history stages: seedlings, juveniles, and small and large reproductive adults. 
+# We model the rates in the last stochastic post-fire habitat, TSF>3, in natural populations 
+# (i.e., low grazing) and populations exposed to human disturbances (i.e. high grazing).
 #
 # Author: Eva Conquet
 #

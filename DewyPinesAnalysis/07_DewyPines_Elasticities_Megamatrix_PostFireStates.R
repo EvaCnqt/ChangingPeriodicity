@@ -1,9 +1,11 @@
-############################################################################
+##########################################################################################################
 #
-# RScript complementing the article Demographic consequences of changes in environmental periodicity (Conquet et al., under review at Ecology).
+# RScript complementing the article Demographic consequences of changes in environmental periodicity 
+# (Conquet et al., under review at Ecology).
 #
 # This script uses the post-fire state-specific vital rate estimates for the dewy pine population. 
-# The aim of this script is to calculate the sensitivity of the population to each post-fire state using a megamatrix, following Pascarella and Horvitz (1998).
+# The aim of this script is to calculate the sensitivity of the population to each post-fire state using 
+# a megamatrix, following Pascarella and Horvitz (1998).
 #
 # Author: Eva Conquet
 #
@@ -15,7 +17,7 @@
 
 ###########################################################################
 #
-# 1. House keeping and loading libraries and data
+# 1. House keeping and loading libraries and data ----
 #
 ###########################################################################
 
@@ -58,7 +60,7 @@ head(data.vr.TSF3plus)
 
 ###########################################################################
 #
-# 2. Preparing the simulations
+# 2. Preparing the simulations ----
 #
 ###########################################################################
 
@@ -248,8 +250,8 @@ buildmat.stochastic <- function(year){
 }
 
 
-## 2.2. Creating the megamatrix (following Pascarella and Horvitz, 1998) ----
-# --------------------------------------------------------------------------------
+## 2.2. Creating the megamatrix and calculating elasticities (following Pascarella and Horvitz, 1998) ----
+# ---------------------------------------------------------------------------------------------------
 
 # 5 life-history stages
 # 5 post-fire habitat states
@@ -283,7 +285,7 @@ for(i in 1:1000){
   # (5) Define the habitat state-transition matrix (C)
   
   # Probability of fire when in TSF>2 ~ once every 10 years 
-  p = 0.033
+  p = 1/30
   
   # Matrix for the environment transitions
   C = matrix(0, 5, 5)
