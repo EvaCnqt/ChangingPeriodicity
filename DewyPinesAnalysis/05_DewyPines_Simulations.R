@@ -2049,4 +2049,4 @@ lines(apply(periodicFire30.perturb.stateAll.avgdens[[2]], 2, mean, na.rm = T), l
 #
 ###########################################################################
 
-save.image("DewyPine_NewProjections_Results.RData")
+save.image("DewyPine_Projections_Results.RData")

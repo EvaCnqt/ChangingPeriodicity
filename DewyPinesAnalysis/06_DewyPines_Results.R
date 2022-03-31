@@ -37,7 +37,7 @@ load.librairies()
 ## 1.3. Loading data ----
 # ------------------
 
-load("DewyPine_NewProjections_Results.RData")
+load("DewyPine_Projections_Results.RData")
 
 
 
@@ -297,6 +297,6 @@ dev.off()
 #
 ###########################################################################
 
-write.csv(sim.results,"NewSimResults_DP.csv",row.names = F)
+write.csv(sim.results,"SimResults_DP.csv",row.names = F)
 write.csv(agg.stoch.lambda, "DP_StochLambda_MedianQuantiles.csv", row.names = F)
 write.csv(agg.var.lambda, "DP_VarLambda_MedianQuantiles.csv", row.names = F)
